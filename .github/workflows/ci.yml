@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 静态游戏自检
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 1) 从 index.html 抽出 <script id="game-core">，在 vm 沙箱里加载，
+      #    硬断言 Core API 恰好 26 项（多一项少一项都算契约破坏）
+      - name: 抽取 Core 并校验 26 项 API
+        run: node tests/extract-core.js
+
+      # 2) 纯函数断言：1–1000 关可解性 / 张力 / 确定性 / 门运算 / 战斗结算
+      - name: Core 纯函数断言
+        run: node tests/core.test.js
+
+      # 3) 静态审计：禁用词、Math.random、外链、ctx 泄漏、script 块结构
+      - name: 静态审计
+        run: node tests/static-audit.js
+
+      # 4) 可静态托管性：单文件、零外链、无根绝对路径、体积预算
+      - name: 可静态托管性守卫
+        run: node scripts/check-deploy.mjs

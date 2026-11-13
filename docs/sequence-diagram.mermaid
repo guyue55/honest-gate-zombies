@@ -1,0 +1,74 @@
+sequenceDiagram
+    autonumber
+    participant U as 玩家
+    participant I as game-input
+    participant S as GameSession 逻辑层
+    participant C as GameCore
+    participant SC as SceneDescription 纯数据
+    participant R as Canvas2DRenderer 接口
+    participant AU as AudioEngine 含 BGM 音序器
+    participant D as __GAME_DEBUG__ 只读
+
+    U->>S: 点击「开始游戏」
+    S->>S: enterLevel(1) —— 唯一入口
+    S->>C: generateLevel(1)
+    C-->>S: Level{P0(1)=10n, Z(1)=30n, groups, isBoss:false}
+    S->>S: state.power = level.entryPower（入关兵力快照）
+    S->>C: verifySolvable(level)
+    C-->>S: {solvable:true, bestPower:40n}
+    S->>D: phaseTrace=['S1'], phase='S1'
+    S->>AU: unlock()（首个手势）→ BGM 音序器 start()，S1 强度 = pad 层
+
+    S->>C: buildScene(SceneInput) —— 纯函数，不碰 Canvas
+    C-->>SC: SceneDescription（JSON 可序列化）
+    S->>R: beginFrame(scene) → drawBackground / drawTrack / drawHud / endFrame
+    Note over SC,R: A-11 边界：逻辑层只传纯数据，ctx 只在 Canvas2DRenderer 内
+
+    U->>S: 跳过预览 / 计时到
+    S->>D: phaseTrace.push('S2')
+    S->>AU: BGM setIntensity('run') → 加入 bass + arp 层
+
+    loop 每组门 g=2..6
+        U->>I: 滑动 / A-D / 拖拽
+        I-->>S: targetX
+        S->>C: applyGate(state.power, gate)
+        C-->>S: GateResult{power, delta, label}
+        S->>S: state.power = result.power；gateChoices.push(lane)
+        S->>AU: play('gate.positive'|'gate.negative')
+        S->>C: buildScene(input + floatText / numberPop 特效事件)
+        C-->>SC: 更新后的 SceneDescription
+        S->>R: drawGate / drawUnit / drawEffects（按 z 透视缩放 + 飘字描边）
+        S->>D: lastGateResult = 快照（bigint→string）
+    end
+
+    S->>S: 拍 (P0_battle, Z0) 快照
+    S->>C: resolveBattle({power, enemyPower, level, entryPower, isBoss})
+    C-->>S: BattleOutcome{win, powerAfter, rollbackPower, durationMs, frames}
+    S->>S: outcome 立即锁定；inputLocked = true
+    S->>D: phaseTrace.push('S3'), outcome = 快照
+    S->>AU: BGM setIntensity('battle') → +perc 全层；Boss 关 +boss.spawn
+
+    loop 固定 durationMs 表演
+        S->>C: interpolate(P0, powerAfter, t1000) / (Z0, 0n, t1000)
+        C-->>S: 当前显示值（bigint）
+        S->>C: buildScene(input + bullet / hit / shake / flash 特效)
+        C-->>SC: 场景描述
+        S->>R: drawHorde / drawBoss / drawEffects / drawHud（泛光·暗角·震屏·慢动作）
+        S->>AU: play('fire'|'zombie.down')
+    end
+
+    S->>D: phaseTrace.push('S4')
+    alt win === true
+        S->>C: buildScene(input + victory 浮层)
+        C-->>SC: 场景描述
+        S->>R: 胜利浮层「第 N 关 · 清空」+ 增兵 / 剩余兵力 / 最高关
+        S->>AU: play('victory')，BGM 切胜利短 jingle
+        U->>S: 点击「下一关」
+        S->>S: enterLevel(n+1) → S1
+    else win === false
+        S->>R: 失败浮层「再来一次，不看广告」
+        S->>AU: play('defeat')，BGM 回落 pad 层
+        U->>S: 点击「重试本关」
+        S->>S: enterLevel(n)（同 n，power 回滚至 entryPower = P0(n)）→ S1
+    end
+    S->>D: phaseTraceHistory.push({level:n, trace:['S1','S2','S3','S4']})

@@ -1,0 +1,4359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>诚实数字门 · 打僵尸</title>
+<!-- 内联零请求 favicon：阻止浏览器自动请求 /favicon.ico，避免 Pages 场景下 404 与控制台报错 -->
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg-top:#bae6fd; --bg-bottom:#e0f2fe;
+  --pos:#0ea5e9; --pos2:#0284c7;
+  --neg:#e11d48; --neg2:#fb7185;
+  --boss:#9333ea; --num:#0369a1;
+  --txt:#0f172a; --txt2:#475569;
+  --card:#ffffff; --line:rgba(2,132,199,.20);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#dbeafe;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+  color:var(--txt);
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:none;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(130% 85% at 50% 0%,#f0f9ff 0%,#dbeafe 52%,#93c5fd 100%);
+}
+#stage{
+  position:relative;
+  width:100%;max-width:480px;height:100%;
+  margin:0 auto;
+  background:linear-gradient(180deg,var(--bg-top),var(--bg-bottom));
+  overflow:hidden;
+  box-shadow:0 0 70px rgba(2,132,199,.20);
+}
+#game-canvas{position:absolute;display:block;left:0;top:0;touch-action:none;}
+#hud-buttons{
+  position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;
+  display:flex;gap:8px;z-index:20;
+}
+.hbtn{
+  width:38px;height:38px;border-radius:13px;
+  border:1.5px solid rgba(2,132,199,.30);
+  background:rgba(255,255,255,.92);color:#0369a1;
+  font-size:15px;font-weight:800;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(2,132,199,.20);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  transition:background .15s ease,border-color .15s ease;
+}
+.hbtn:hover{background:#e0f2fe;border-color:rgba(2,132,199,.62);}
+.hbtn.on{color:#0284c7;border-color:rgba(2,132,199,.72);background:#f0f9ff;}
+.overlay{
+  position:absolute;inset:0;z-index:30;
+  display:flex;align-items:center;justify-content:center;
+  padding:22px;
+  background:rgba(224,242,254,.60);
+  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+}
+.overlay.hidden{display:none;}
+.card{
+  width:100%;max-width:366px;
+  background:linear-gradient(180deg,#ffffff 0%,#f0f9ff 100%);
+  border:1.5px solid rgba(2,132,199,.22);
+  border-radius:26px;padding:28px 24px 24px;
+  box-shadow:0 24px 60px rgba(2,132,199,.24),0 4px 14px rgba(15,23,42,.08),inset 0 1px 0 #ffffff;
+  text-align:center;
+}
+.kicker{font-size:11px;letter-spacing:.28em;color:#0284c7;font-weight:800;margin-bottom:10px;}
+h1.title{
+  margin:0 0 12px;font-size:30px;font-weight:900;line-height:1.18;letter-spacing:.02em;
+  background:linear-gradient(120deg,#0369a1,#0ea5e9 58%,#06b6d4);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.honest{
+  display:inline-block;margin:0 0 8px;padding:7px 14px;border-radius:999px;
+  font-size:13px;font-weight:800;color:#0369a1;
+  background:rgba(14,165,233,.11);border:1.5px solid rgba(14,165,233,.38);
+}
+.subtitle{margin:0 0 4px;font-size:14px;color:var(--txt2);line-height:1.6;}
+.result-title{font-size:26px;font-weight:900;margin:2px 0 6px;color:var(--txt);}
+.result-sub{font-size:13px;color:var(--txt2);margin:0 0 16px;}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:0 0 14px;}
+/* V3 战斗评级：纯表现层反馈（不影响胜负与下一关起始值），用颜色区分 S/A/B/C/D */
+.grade-row{
+  display:flex;align-items:center;gap:12px;margin:0 0 14px;
+  padding:10px 12px;border-radius:16px;
+  background:linear-gradient(120deg,rgba(56,189,248,.10),rgba(125,211,252,.04));
+  border:1px solid rgba(56,189,248,.22);
+}
+.grade-badge{
+  width:52px;height:52px;flex:0 0 auto;border-radius:15px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:900;color:#fff;letter-spacing:-.02em;
+  background:linear-gradient(150deg,#38bdf8,#0284c7);
+  box-shadow:0 8px 20px rgba(2,132,199,.30),inset 0 1px 0 rgba(255,255,255,.35);
+}
+.grade-badge.g-S{background:linear-gradient(150deg,#fbbf24,#f59e0b);box-shadow:0 8px 20px rgba(245,158,11,.35),inset 0 1px 0 rgba(255,255,255,.45);}
+.grade-badge.g-A{background:linear-gradient(150deg,#34d399,#059669);box-shadow:0 8px 20px rgba(5,150,105,.30),inset 0 1px 0 rgba(255,255,255,.35);}
+.grade-badge.g-B{background:linear-gradient(150deg,#38bdf8,#0284c7);}
+.grade-badge.g-C{background:linear-gradient(150deg,#94a3b8,#64748b);box-shadow:none;}
+.grade-badge.g-D{background:linear-gradient(150deg,#fb7185,#e11d48);}
+.grade-meta{text-align:left;flex:1;min-width:0;}
+.grade-meta .k{display:block;font-size:11px;color:var(--txt2);font-weight:700;letter-spacing:.06em;}
+.grade-meta .note{display:block;font-size:12.5px;color:var(--txt2);margin-top:3px;line-height:1.4;}
+.grade-meta .note b{color:var(--txt);font-weight:800;}
+.stat{
+  flex:1;padding:10px 6px;border-radius:14px;
+  background:rgba(14,165,233,.07);border:1px solid rgba(2,132,199,.16);
+}
+.stat .k{display:block;font-size:11px;color:var(--txt2);margin-bottom:4px;}
+.stat .v{display:block;font-size:17px;font-weight:900;color:var(--num);word-break:break-all;line-height:1.2;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:14px 18px;border:none;border-radius:15px;
+  font-size:16px;font-weight:900;cursor:pointer;color:#ffffff;
+  letter-spacing:.02em;
+  background:linear-gradient(135deg,#0ea5e9,#0284c7);
+  box-shadow:0 10px 26px rgba(2,132,199,.36);
+  transition:transform .12s ease,filter .12s ease;
+}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.btn:active{transform:translateY(1px);}
+.btn.secondary{
+  background:#ffffff;color:#0369a1;
+  border:1.5px solid rgba(2,132,199,.34);box-shadow:none;margin-top:10px;
+}
+.btn.small{width:auto;padding:9px 16px;font-size:13px;box-shadow:none;}
+.op-list{margin:20px 0 18px;display:flex;flex-direction:column;gap:9px;text-align:left;}
+.op-row{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--txt2);line-height:1.4;}
+.op-ico{
+  width:42px;height:42px;border-radius:12px;flex:0 0 auto;
+  background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.30);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:800;color:#0284c7;
+}
+.op-row b{color:var(--txt);font-weight:800;}
+.foot-note{margin:14px 0 0;font-size:11px;color:var(--txt2);opacity:.9;line-height:1.6;}
+.mute-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;}
+.mute-toggle{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;
+  border:1.5px solid rgba(2,132,199,.32);background:#ffffff;
+  color:#0369a1;font-size:12px;font-weight:700;cursor:pointer;
+}
+.mute-toggle.on{color:#0284c7;border-color:rgba(2,132,199,.62);background:#f0f9ff;}
+.help-body{text-align:left;font-size:12.5px;color:var(--txt2);line-height:1.7;max-height:64vh;overflow:auto;}
+.help-body h3{margin:14px 0 6px;font-size:13px;color:var(--txt);letter-spacing:.04em;}
+.help-body p{margin:4px 0;}
+.help-kv{display:flex;gap:8px;font-size:12px;margin:8px 0;}
+.badge{display:inline-block;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:800;}
+.badge.generated{background:rgba(14,165,233,.16);color:#0369a1;}
+.badge.ok{background:rgba(34,197,94,.16);color:#15803d;}
+.badge.fallback{background:rgba(245,158,11,.18);color:#b45309;}
+.badge.degraded{background:rgba(225,29,72,.14);color:#be123c;}
+.badge.skipped{background:rgba(100,116,139,.14);color:#475569;}
+#health-table{margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.hrow{display:grid;grid-template-columns:1.25fr .8fr 1.35fr;gap:6px;padding:6px 8px;font-size:10.5px;border-bottom:1px solid rgba(2,132,199,.12);align-items:center;}
+.hrow:last-child{border-bottom:none;}
+.hhead{background:#e0f2fe;color:#075985;font-weight:800;position:sticky;top:0;}
+.hrow .src{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);}
+.hrow .rsn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);}
+@media (max-width:360px){
+  .card{padding:22px 16px 18px;}
+  h1.title{font-size:26px;}
+  .stat .v{font-size:15px;}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;transition-duration:.001ms!important;}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game-canvas" width="480" height="854"></canvas>
+
+  <div id="hud-buttons">
+    <button id="btn-mute" class="hbtn" type="button" aria-label="静音" title="静音">♪</button>
+    <button id="btn-restart" class="hbtn" type="button" aria-label="重开本关" title="重开本关">↺</button>
+    <button id="btn-help" class="hbtn" type="button" aria-label="帮助" title="帮助">?</button>
+  </div>
+
+  <div id="overlay-home" class="overlay">
+    <div class="card">
+      <div class="kicker">HONEST GATE ZOMBIES</div>
+      <h1 class="title">数字门 · 打僵尸</h1>
+      <div class="honest">没有隐藏玩法，没有骗人广告</div>
+      <p class="subtitle">每一关都是数字门 → 打僵尸</p>
+      <button id="btn-start" class="btn" type="button">开始游戏</button>
+      <div class="op-list">
+        <div class="op-row"><span class="op-ico">↔</span><span><b>触屏</b>　按住左右滑动选门</span></div>
+        <div class="op-row"><span class="op-ico">A D</span><span><b>键盘</b>　A / D 或 ← / → 移动</span></div>
+        <div class="op-row"><span class="op-ico">拖</span><span><b>鼠标</b>　按住拖拽移动队伍</span></div>
+      </div>
+      <div class="mute-row">
+        <button id="btn-mute-home" class="mute-toggle on" type="button">♪ 声音：开</button>
+      </div>
+      <p class="foot-note">小队伍选加法，大队伍选乘法。<br>清空本关全部僵尸即过关，失败可无限重试。</p>
+    </div>
+  </div>
+
+  <div id="overlay-win" class="overlay hidden">
+    <div class="card">
+      <div class="kicker">CLEAR</div>
+      <div id="win-title" class="result-title">第 1 关 · 清空</div>
+      <p class="result-sub">僵尸已全部清空</p>
+      <div class="grade-row">
+        <div id="win-grade" class="grade-badge g-A">A</div>
+        <div class="grade-meta">
+          <span class="k">战斗评级（只影响评价，不影响过关）</span>
+          <span id="win-grade-note" class="note">集火精准度 0% · 最高连击 0</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><span class="k">本关增兵</span><span id="win-gain" class="v">+0</span></div>
+        <div class="stat"><span class="k">剩余兵力</span><span id="win-left" class="v">0</span></div>
+        <div class="stat"><span class="k">最高连击</span><span id="win-combo" class="v">0</span></div>
+        <div class="stat"><span class="k">最高关</span><span id="win-best" class="v">1</span></div>
+      </div>
+      <button id="btn-next" class="btn" type="button">下一关</button>
+    </div>
+  </div>
+
+  <div id="overlay-lose" class="overlay hidden">
+    <div class="card">
+      <div class="kicker">RETRY</div>
+      <div class="result-title">再来一次，不&#x770B;广告</div>
+      <p class="result-sub">兵力不足，免费重试本关，不扣任何东西</p>
+      <button id="btn-retry" class="btn" type="button">重试本关</button>
+    </div>
+  </div>
+
+  <div id="overlay-help" class="overlay hidden">
+    <div class="card">
+      <div class="kicker">HELP / ASSETS</div>
+      <div class="result-title">操作与资源健康</div>
+      <div class="help-body">
+        <h3>怎么玩</h3>
+        <p>队伍自动前进，左右移动对准数字门；蓝色正门增兵，红色负门减兵；穿完全部门组后自动开火清僵尸；清空即过关。每 5 关一个 Boss。</p>
+        <h3>操作</h3>
+        <p>触屏按住左右滑动 · 键盘 A / D 或 ← / → · 鼠标按住拖拽 · 空格 / 回车确认按钮。</p>
+        <h3>资源健康（默认零外部请求）</h3>
+        <div class="help-kv"><span>外部请求数</span><b id="health-requests">0</b><span>游玩是否受阻</span><b id="health-blocked">否</b></div>
+        <div id="health-table"></div>
+      </div>
+      <button id="btn-refresh" class="btn secondary" type="button">刷新资源</button>
+      <button id="btn-close-help" class="btn secondary" type="button">返回</button>
+    </div>
+  </div>
+</div>
+
+<script id="game-core">
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.__GAME_CORE__ = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  /* ==== 纯逻辑内核：仅语言内置与显式注入参数，无任何宿主环境访问 ==== */
+  var Core = {};
+  /* =========================================================================
+     T01 · 常量 / 内置清单 / 通用工具
+     ========================================================================= */
+  function deepFreeze(o) {
+    if (o === null || typeof o !== 'object' || Object.isFrozen(o)) return o;
+    Object.freeze(o);
+    for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) deepFreeze(o[k]);
+    return o;
+  }
+
+  var CONSTANTS = deepFreeze({
+    P0_BASE:10n, GROW_NUM:7n, GROW_DEN:6n, Z_MULT:3n,
+    BOSS_NUM:3n, BOSS_DEN:2n, SOLVE_NUM:11n, SOLVE_DEN:10n,
+    LOSS_NUM:1n, LOSS_DEN:10n,
+    TRAP_NUM:1n, TRAP_DEN:4n,
+    MAX_TUNE:8, MAX_GATE_GROUPS:30, MAX_DRAW_UNITS:120,
+    PREVIEW_MS:1800, BATTLE_MS:9500, BOSS_BATTLE_MS:13000, RESULT_MS:3000,
+    MANIFEST_TIMEOUT_MS:1500, MANIFEST_TTL_MS:21600000, ASSET_MAX_RETRIES:2,
+    SEED_MIX:0x9E3779B1, LOGICAL_W:480, LOGICAL_H:854,
+    QUALITY_HIGH:{dpr:2,particles:240,units:120,bloom:1,vignette:1,scan:1,shadow:1},
+    QUALITY_MID:{dpr:1.5,particles:120,units:90,bloom:1,vignette:1,scan:0,shadow:1},
+    QUALITY_LOW:{dpr:1,particles:40,units:60,bloom:0,vignette:0,scan:0,shadow:0},
+    FPS_WINDOW:60, FPS_DOWN:45, FPS_UP:55, FPS_HOLD_MS:3000,
+    BGM_BPM:128, BGM_STEPS:128, BGM_LOOKAHEAD_MS:25, BGM_SCHEDULE_AHEAD:0.1
+  });
+  var PHASES = deepFreeze(['S1','S2','S3','S4']);
+  var BUILTIN_MANIFEST = deepFreeze({
+    version:'1.0.0-builtin', ttlMs:21600000, updatedAt:1731196800000,
+    entries:[
+      {id:'bg.track',     type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.track',      required:false},
+      {id:'gate.frame',   type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.gate',       required:false},
+      {id:'unit.soldier', type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.soldier',    required:false},
+      {id:'unit.zombie',  type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.zombie',     required:false},
+      {id:'unit.boss',    type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.boss',       required:false},
+      {id:'fx.particle',  type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.particle',   required:false},
+      {id:'hud.icons',    type:'visual', version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'canvas.icons',      required:false},
+      {id:'sfx.gate',     type:'audio',  version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'webaudio.gate',     required:false},
+      {id:'sfx.fire',     type:'audio',  version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'webaudio.fire',     required:false},
+      {id:'sfx.win',      type:'audio',  version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'webaudio.win',      required:false},
+      {id:'sfx.boss',     type:'audio',  version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'webaudio.boss',     required:false},
+      {id:'font.system',  type:'font',   version:'1.0.0', primary:'', fallbacks:[], timeoutMs:1500, generator:'system-font-stack', required:false}
+    ]
+  });
+
+  /* =========================================================================
+     T02 · PRNG / 数值 / 门运算
+     ========================================================================= */
+  /** @param {number} seed @returns {function():number} mulberry32 确定性伪随机序列 */
+  function makeRng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  /** @param {number} level @returns {number} 关卡号派生 uint32 种子 */
+  function seedFor(level) { return ((Math.imul(level, CONSTANTS.SEED_MIX) >>> 0) || 1); }
+
+  /** @param {bigint} base @param {number} exp @returns {bigint} BigInt 快速幂 */
+  function powInt(base, exp) {
+    var e = exp | 0;
+    var result = 1n, b = base;
+    while (e > 0) {
+      if (e & 1) result = result * b;
+      e = e >>> 1;
+      if (e > 0) b = b * b;
+    }
+    return result;
+  }
+  /** @param {bigint} a @param {bigint} b @returns {bigint} BigInt 版取大 */
+  function maxBig(a, b) { return a > b ? a : b; }
+
+  /** @param {bigint} v @param {object} opts @returns {string} 紧凑显示，全程字符串操作 */
+  function formatNumber(v, opts) {
+    var o = opts || {};
+    var sig = o.sig == null ? 3 : o.sig;
+    var sciFrom = o.sciFrom == null ? 18 : o.sciFrom;
+    var s = v.toString();
+    var neg = s.charAt(0) === '-';
+    var digits = neg ? s.slice(1) : s;
+    var p = 0;
+    while (p < digits.length - 1 && digits.charAt(p) === '0') p++;
+    digits = digits.slice(p);
+    if (digits === '0') return '0';
+    var d = digits.length;
+    var exp = d - 1;
+    if (d <= 3) return (neg ? '-' : '') + digits;
+    var head = digits.charAt(0);
+    if (sig > 1) {
+      var tail = digits.slice(1, sig);
+      while (tail.length < sig - 1) tail += '0';
+      head += '.' + tail;
+    }
+    if (exp >= sciFrom) return (neg ? '-' : '') + head + 'e' + exp;
+    var base = Math.floor(exp / 3) * 3;
+    var unit = ({3:'K',6:'M',9:'B',12:'T',15:'Qa'})[base];
+    if (!unit) return (neg ? '-' : '') + head + 'e' + exp;
+    var shift = exp - base;
+    var intPart = digits.slice(0, shift + 1);
+    var fracLen = sig - (shift + 1);
+    var fracPart = digits.slice(shift + 1, sig);
+    if (fracLen < 0) fracLen = 0;
+    while (fracPart.length < fracLen) fracPart += '0';
+    if (fracPart.length > fracLen) fracPart = fracPart.slice(0, fracLen);
+    var mant = intPart + (fracPart.length > 0 ? '.' + fracPart : '');
+    return (neg ? '-' : '') + mant + unit;
+  }
+  /** @param {bigint} v @returns {string} 三位有效数字紧凑别名 */
+  function formatCompact(v) { return formatNumber(v, {sig:3, sciFrom:18}); }
+  /** @param {bigint} v @returns {string} 十进制字符串（跨调试边界用） */
+  function bigintToDecimal(v) { return v.toString(); }
+
+  var OP_SYM = {add:'+', mul:'×', sub:'-', div:'÷'};
+  function symFor(op) { return OP_SYM[op] || '+'; }
+  function makeLabel(op, value) { return symFor(op) + formatCompact(value); }
+  function isPositive(op) { return op === 'add' || op === 'mul'; }
+  /* 关卡内陷阱样式（仅视觉/扣兵差异，确定性选取，无随机源） */
+  var TRAP_TYPES = ['spike', 'saw', 'fire', 'crusher'];
+  /** @param {bigint} p @returns {bigint} 陷阱扣兵：损失 TRAP_NUM/TRAP_DEN（默认 20%） */
+  function applyTrap(p) {
+    if (p <= 0n) return 0n;
+    var loss = (p * CONSTANTS.TRAP_NUM) / CONSTANTS.TRAP_DEN;
+    if (loss < 1n) loss = 1n;
+    return p - loss;
+  }
+
+  /** @param {bigint} power @param {object} gate @returns {object} GateResult */
+  function applyGate(power, gate) {
+    var before = power;
+    var p;
+    switch (gate.op) {
+      case 'add': p = power + gate.value; break;
+      case 'mul': p = power * gate.value; break;
+      case 'sub': p = power - gate.value; if (p < 0n) p = 0n; break;
+      case 'div': p = power / gate.value; break;
+      default: p = power;
+    }
+    return {before:before, power:p, delta:p - before, op:gate.op, value:gate.value, label:gate.label};
+  }
+  /** 逐组运算结果链。path 形如 {group, door}[]，door 是 grp.gates 的 0-based 数组下标。
+   *  @param {bigint} power @param {Array} path @param {object} level @returns {object} */
+  function applyGatePath(power, path, level) {
+    var p = power, results = [];
+    for (var i = 0; i < path.length; i++) {
+      var step = path[i];
+      var grp = level.groups[step.group];
+      if (!grp) continue;
+      var gate = grp.gates[step.door];
+      if (!gate) continue;
+      var r = applyGate(p, gate);
+      if (grp.traps && grp.traps[step.door]) {
+        r = {before:r.before, power:applyTrap(r.power), delta:r.delta, op:r.op, value:r.value, label:r.label, trapped:true};
+      }
+      results.push(r);
+      p = r.power;
+    }
+    return {power:p, results:results};
+  }
+  /** 每组选最大收益门的最优路径；path[i] 为该组 grp.gates 的 0-based 数组下标（裁决 A-2）。
+   *  @param {object} level @returns {object} */
+  function bestPath(level) {
+    var p = level.entryPower, path = [];
+    for (var i = 0; i < level.groups.length; i++) {
+      var grp = level.groups[i];
+      var gates = grp.gates;
+      var bestP = null, bestIdx = 0;
+      for (var j = 0; j < gates.length; j++) {
+        var r = applyGate(p, gates[j]);
+        if (grp.traps && grp.traps[j]) r = {power:applyTrap(r.power)};
+        if (bestP === null || r.power > bestP) { bestP = r.power; bestIdx = j; }
+      }
+      if (bestP === null) bestP = p;
+      p = bestP; path.push(bestIdx);
+    }
+    return {path:path, power:p};
+  }
+
+  /* =========================================================================
+     T03 · 关卡生成 / 可解性 / 确定性调参（含 RENDERING §7.2 的 I-4 修订）
+     ========================================================================= */
+  /** @param {number} level @returns {number} 门组数 g(n)
+   *  V3 节奏重构：单关目标 40–60 秒（行业数字门品类实机 run 60–90s 的下限侧），
+   *  从 20 组起步、每 2 关 +1、Boss 关 +3，上限 30 组。旧值 3–6 组使单关仅 9–14.7 秒，
+   *  被玩家判定为「随便动几下就结束」，是本轮体验问题的首要根因。 */
+  function gateCountFor(level) {
+    var base = 20 + Math.floor(level / 2);
+    if (level % 5 === 0) base += 3;   /* Boss 关更长，决战前铺垫更充分 */
+    return Math.min(CONSTANTS.MAX_GATE_GROUPS, base);
+  }
+  /** @param {number} level @returns {boolean} 是否 Boss 关 */
+  function isBossLevel(level) { return level % 5 === 0; }
+  /** @param {number} level @returns {bigint} P0(n) = 10·7^(n-1)/6^(n-1) */
+  function entryPowerFor(level) {
+    var e = level - 1;
+    return (CONSTANTS.P0_BASE * powInt(CONSTANTS.GROW_NUM, e)) / powInt(CONSTANTS.GROW_DEN, e);
+  }
+  /** @param {number} level @returns {bigint} Z(n) = 3·P0，Boss 关再 ×3/2 */
+  function enemyPowerFor(level) {
+    var z = entryPowerFor(level) * CONSTANTS.Z_MULT;
+    if (isBossLevel(level)) z = (z * CONSTANTS.BOSS_NUM) / CONSTANTS.BOSS_DEN;
+    return z;
+  }
+  /** 稳妥路径：每组只走「无陷阱正门」里收益最大的一道。
+   *  这是玩家「完全不冒险」时的下界，用来校准敌方兵力与判断难度是否过苛。 */
+  function safePathPower(level) {
+    var p = level.entryPower;
+    for (var i = 0; i < level.groups.length; i++) {
+      var grp = level.groups[i], best = null;
+      for (var j = 0; j < grp.gates.length; j++) {
+        var g = grp.gates[j];
+        if (!g.positive) continue;
+        if (grp.traps && grp.traps[j]) continue;
+        var r = applyGate(p, g);
+        if (best === null || r.power > best) best = r.power;
+      }
+      if (best === null) {
+        for (var k = 0; k < grp.gates.length; k++) {
+          if (grp.gates[k].positive) { best = applyGate(p, grp.gates[k]).power; break; }
+        }
+      }
+      if (best !== null) p = best;
+    }
+    return p;
+  }
+
+  /** 关卡内的「威胁兵力」。
+   *  V3 二次分析结论（第一版按最优路径 ×42% 校准是失败的）：
+   *  门组扩到 20–30 组后，最优路径会靠「吃陷阱换高倍率」拉开与稳妥路线的差距，
+   *  按最优值打折会让「稳着走」在 82% 的关卡里直接输——玩家会觉得被迫赌博。
+   *  改为按稳妥路径的 72% 校准：不冒险能稳过（余量 39%），
+   *  连续选错 2–3 次才会翻车，敢吃陷阱则大幅超出。
+   *  这里刻意留厚缓冲：单关已拉长到 40–58 秒，失败一次重来 40 秒的成本远高于 9 秒时代，
+   *  把「一次失手就重开」的密度压低，是长关卡的必要配套。
+   *  72% < 1/1.1，故 verifySolvable 的 1.1 倍余量恒成立 → 100% 可胜不变。 */
+  function calibratedEnemy(level, bestPower, safePower) {
+    var base = enemyPowerFor(level);
+    var threat = (safePower * 72n) / 100n;
+    return threat > base ? threat : base;
+  }
+  /** @param {number} level @returns {string|null} 里程碑称号（仅换视觉） */
+  function milestoneFor(level) {
+    if (level === 10) return '十里坡';
+    if (level === 20) return '二十关';
+    if (level === 50) return '半百';
+    if (level === 100) return '百关';
+    return null;
+  }
+  /** @param {number} level @returns {string} 里程碑配色标识 */
+  function themeFor(level) {
+    if (level >= 100) return 'lv100';
+    if (level >= 50) return 'lv50';
+    if (level >= 20) return 'lv20';
+    if (level >= 10) return 'lv10';
+    return 'default';
+  }
+
+  /** 构造门组（V3 节奏重构）。三条硬规则：
+   *  1) 每组必有「一道正门且无陷阱」——bestPath 因此必可解，100% 可胜不变；
+   *  2) 陷阱只落非保底 lane，绝不覆盖唯一安全正门；
+   *  3) 组型交替，打破旧版「每组都塞一道乘法门 → 永远选乘」的无脑最优解：
+   *       risk   陷阱 lane 挂更高倍率（×3/×4/×5），安全 lane 给 ×3 或大加法。
+   *              扣 25% 后有时微赚（×5→3.75）、有时持平（×4→3）、有时吃亏（×3→2.25），
+   *              玩家必须真的比较数字，而不是无脑拖到蓝门。
+   *       spurt  每 7 组一次的冲刺门（×4/×5 放安全 lane），给单关节奏峰值。
+   *       normal 一道 ×2/×3 + 一道大加法 + 可选负门，是「快算一下」的基础节拍。 */
+  function buildGroups(n, rng) {
+    var P0 = entryPowerFor(n);
+    var g = gateCountFor(n);
+    var boss = isBossLevel(n);
+    var sectorSize = Math.ceil(g / 3);
+    var groups = [];
+
+    /* 倍率预算：单关的乘法门数量是「固定配额」而不是「每组都有」。
+       这是 V3 数值曲线的关键——旧实现每组必塞一道 ×2/×3，20 组后最优值冲到 10^9，
+       HUD 只能显示 2.41B，玩家完全失去量级直觉。改为：
+         冲刺组 spurt 每 10 组 1 个（×2/×3，安全 lane）
+         风险组 risk  约 20%（陷阱 lane 挂 ×2/×3，安全 lane 是 ×2 或大加法）
+         其余 normal 纯加法 / 加法对减法，负责「稳住队伍」
+       单关倍率门 ≈ 5–7 个，终值落在千–十万量级，既保留数字膨胀的爽感又可读。 */
+    var spurtCount = Math.max(1, Math.floor(g / 12));
+    var riskCount = Math.max(2, Math.round(g * 0.12));
+    var spurtAt = {};
+    for (var sp = 0; sp < spurtCount; sp++) {
+      spurtAt[Math.min(g - 1, Math.round(((sp + 1) * g) / (spurtCount + 1)))] = true;
+    }
+    var riskLeft = riskCount;
+
+    /* V3 关键修正（真机截图暴露）：加法门若以 P0 为基准，走到第 10 组时
+       我方 2.39K、门上写着 +15，加法分支等于不存在，玩家只能无脑选乘法。
+       改为以「本组预期兵力」为基准：按 1.35^index 几何增长估算，
+       加法门给 0.5–1.1 倍当前兵力，与 ×2 放在同一量级比较，
+       「+100% ≈ ×2」的直觉才成立，决策才真的需要算。 */
+    var expect = P0;
+    function negDoor() {
+      if (rng() < 0.5) return {op:'div', value:2n};
+      var f = [3n, 5n, 7n][Math.floor(rng() * 3)];
+      var v = (expect * f) / 10n;
+      if (v < 1n) v = 1n;
+      return {op:'sub', value:v};
+    }
+    function addDoor(tenths) {
+      var v = (expect * BigInt(tenths)) / 10n;
+      if (v < 1n) v = 1n;
+      return {op:'add', value:v};
+    }
+
+    for (var i = 0; i < g; i++) {
+      expect = (expect * 147n) / 100n;   /* 本组预期兵力：1.8 倍几何增长（贴近最优路径实际节奏） */
+      var sector = Math.min(2, Math.floor(i / sectorSize));
+      var isSpurt = !!spurtAt[i] || i === g - 1;
+      var isRisk = false;
+      if (!isSpurt && i > 1 && riskLeft > 0) {
+        /* 风险组不扎堆：每 3 组最多 1 个，保证「稳一稳」的节拍存在 */
+        if (rng() < 0.62 || (g - i - 1) <= riskLeft) { isRisk = true; riskLeft--; }
+      }
+      var doorCount = 2 + (rng() < 0.55 ? 1 : 0);
+      var doors = [];
+
+      /* I-4 不变量：每组至少一道负门（红门），保证「看错颜色」始终有代价；
+         同时每组至少一道无陷阱正门（见下方保底），两条一起保证可解且不无脑。 */
+      if (isRisk) {
+        /* 高风险高收益：陷阱 lane 挂更高倍率，安全 lane 给 ×2 或大加法。
+           ×3 扣 25% 后剩 2.25（明显该贪）；×2 剩 1.5（明显吃亏）。
+           两种都会出现，所以「看到红门就绕开」和「看到红门就冲」都是错的。 */
+        var riskyMul = [2n, 3n][Math.floor(rng() * 2)];
+        doors.push({op:'mul', value:riskyMul, trap:true});
+        doors.push(rng() < 0.5 ? {op:'mul', value:2n} : addDoor(5));
+        doors.push(negDoor());
+      } else if (isSpurt) {
+        doors.push({op:'mul', value:(boss ? [3n, 4n] : [2n, 3n])[Math.floor(rng() * 2)]});
+        doors.push(negDoor());
+        if (doorCount === 3) doors.push(addDoor(3));
+      } else {
+        doors.push(addDoor([1, 4, 9][Math.floor(rng() * 3)]));
+        doors.push(negDoor());
+        if (doorCount === 3) doors.push(addDoor([2, 4][Math.floor(rng() * 2)]));
+      }
+
+      /* 门位乱序：陷阱标记跟随门对象一起搬，不会错位到安全 lane */
+      for (var k = doors.length - 1; k > 0; k--) {
+        var j = Math.floor(rng() * (k + 1));
+        var tmp = doors[k]; doors[k] = doors[j]; doors[j] = tmp;
+      }
+
+      var gates = [], traps = [], trapTypes = [];
+      for (var m = 0; m < doors.length; m++) {
+        var d = doors[m];
+        gates.push({
+          id:'g' + i + 'd' + m,
+          op:d.op, value:d.value, label:makeLabel(d.op, d.value),
+          positive:isPositive(d.op), lane:m
+        });
+        traps.push(!!d.trap);
+        trapTypes.push(d.trap ? TRAP_TYPES[(i * 3 + m) % TRAP_TYPES.length] : null);
+      }
+
+      /* 非风险组：非正门 lane 常驻陷阱（保持「关卡里到处是危险」的体感）。
+         风险组的危险已经由「高倍率门本身带陷阱」承担，不再叠加，避免整关全红。 */
+      if (!isRisk && !isSpurt) {
+        var coverAll = rng() < 0.5;
+        for (var q = 0; q < gates.length; q++) {
+          if (gates[q].positive) continue;
+          if (!coverAll && rng() < 0.6) continue;
+          traps[q] = true;
+          trapTypes[q] = TRAP_TYPES[(i + q * 2) % TRAP_TYPES.length];
+        }
+      }
+
+      /* 保底：确保至少一道正门无陷阱（防御性，正常生成不会触发） */
+      var safe = -1, firstPos = -1;
+      for (var s2 = 0; s2 < gates.length; s2++) {
+        if (!gates[s2].positive) continue;
+        if (firstPos < 0) firstPos = s2;
+        if (!traps[s2]) { safe = s2; break; }
+      }
+      if (safe < 0) {
+        safe = firstPos < 0 ? 0 : firstPos;
+        traps[safe] = false;
+        trapTypes[safe] = null;
+      }
+
+      groups.push({
+        index:i, doorCount:gates.length, gates:gates, traps:traps, trapTypes:trapTypes,
+        worldY:i, sector:sector,
+        kind:isRisk ? 'risk' : (isSpurt ? 'spurt' : 'normal')
+      });
+    }
+    return groups;
+  }
+
+  /** @param {number} level @returns {object} 确定性 Level（同 n 两次完全一致） */
+  function generateLevel(level) {
+    var L = {
+      level:level,
+      seed:seedFor(level),
+      isBoss:isBossLevel(level),
+      groupCount:gateCountFor(level),
+      entryPower:entryPowerFor(level),
+      enemyPower:enemyPowerFor(level),
+      bossHp:isBossLevel(level) ? enemyPowerFor(level) : null,
+      groups:[],
+      theme:themeFor(level),
+      milestone:milestoneFor(level),
+      tunedRounds:0
+    };
+    L.groups = buildGroups(level, makeRng(L.seed));
+    /* 敌方兵力按「最优路径终值」校准：既保证可胜，又让连续选错真的会翻车。
+       校准只发生在生成期，bestPath 不依赖 enemyPower，无循环。 */
+    L.enemyPower = calibratedEnemy(level, bestPath(L).power, safePathPower(L));
+    if (L.isBoss) L.bossHp = L.enemyPower;
+    var round = 0;
+    for (; round < CONSTANTS.MAX_TUNE; round++) {
+      if (verifySolvable(L).solvable) break;
+      L = tuneLevel(L, round);
+      L.enemyPower = calibratedEnemy(level, bestPath(L).power, safePathPower(L));
+      if (L.isBoss) L.bossHp = L.enemyPower;
+    }
+    if (!verifySolvable(L).solvable) {
+      L = forceMultiplier(L);
+      L.enemyPower = calibratedEnemy(level, bestPath(L).power, safePathPower(L));
+      if (L.isBoss) L.bossHp = L.enemyPower;
+    }
+    L.tunedRounds = round;
+    return L;
+  }
+
+  /** @param {object} level @returns {object} Solvability（整数交叉相乘） */
+  function verifySolvable(level) {
+    var bp = bestPath(level);
+    var every = true;
+    for (var i = 0; i < level.groups.length; i++) {
+      var gs = level.groups[i].gates, hasPos = false;
+      for (var j = 0; j < gs.length; j++) if (gs[j].positive) { hasPos = true; break; }
+      if (!hasPos) { every = false; break; }
+    }
+    var ok = (bp.power * CONSTANTS.SOLVE_DEN >= level.enemyPower * CONSTANTS.SOLVE_NUM) && every;
+    return {
+      solvable:ok,
+      bestPower:bp.power,
+      requiredPower:(level.enemyPower * CONSTANTS.SOLVE_NUM + 9n) / CONSTANTS.SOLVE_DEN,
+      path:bp.path.slice(),
+      everyGroupHasPositive:every,
+      tunedRounds:level.tunedRounds,
+      reason:ok ? 'ok' : (every ? 'insufficient-multiplier' : 'no-positive-gate')
+    };
+  }
+
+  /** @param {object} level @param {number} round @returns {object} 确定性调参（无 rng） */
+  function tuneLevel(level, round) {
+    var groups = [];
+    for (var i = 0; i < level.groups.length; i++) {
+      var g0 = level.groups[i], ng = [];
+      for (var j = 0; j < g0.gates.length; j++) {
+        var gt = g0.gates[j];
+        ng.push({id:gt.id, op:gt.op, value:gt.value, label:gt.label, positive:gt.positive, lane:gt.lane});
+      }
+      groups.push({
+        index:g0.index, doorCount:g0.doorCount, gates:ng, worldY:g0.worldY,
+        /* V3 修复：旧实现重建 group 时丢掉了 traps / trapTypes / sector / kind，
+           一旦触发调参，整关陷阱会被静默抹掉（QA 实测「第 1 关 0 陷阱」的同类根因）。 */
+        traps:(g0.traps || []).slice(),
+        trapTypes:(g0.trapTypes || []).slice(),
+        sector:g0.sector, kind:g0.kind
+      });
+    }
+    var target = groups[round % groups.length];
+    var bumps = [2n, 3n, 5n, 7n];
+    var bump = bumps[Math.min(bumps.length - 1, round % bumps.length)];
+    for (var k = 0; k < target.gates.length; k++) {
+      if (target.gates[k].op === 'mul') {
+        if (target.gates[k].value < bump) {
+          target.gates[k].value = bump;
+          target.gates[k].label = makeLabel('mul', bump);
+        }
+        break;
+      }
+    }
+    return {
+      level:level.level, seed:level.seed, isBoss:level.isBoss,
+      groupCount:level.groupCount, entryPower:level.entryPower,
+      enemyPower:level.enemyPower, bossHp:level.bossHp,
+      groups:groups, theme:level.theme, milestone:level.milestone,
+      tunedRounds:round + 1
+    };
+  }
+  /** 理论不可达的防御兜底：把第 0 组保底门强制 ×2。 */
+  function forceMultiplier(level) {
+    var g0 = level.groups[0];
+    for (var k = 0; k < g0.gates.length; k++) {
+      if (g0.gates[k].op === 'mul') {
+        g0.gates[k].value = 2n;
+        g0.gates[k].label = makeLabel('mul', 2n);
+        break;
+      }
+    }
+    return level;
+  }
+
+  /* =========================================================================
+     T04 · 战斗结算（S3 入口快照一次性锁定）
+     ========================================================================= */
+  /** @param {object} snapshot @returns {object} BattleOutcome */
+  function resolveBattle(snapshot) {
+    var P = snapshot.power, Z = snapshot.enemyPower, E = snapshot.entryPower;
+    var win = P >= Z;
+    var loss = (Z * CONSTANTS.LOSS_NUM) / CONSTANTS.LOSS_DEN;
+    var powerAfter = win ? maxBig(1n, P - loss) : 0n;
+    var durationMs = snapshot.isBoss ? CONSTANTS.BOSS_BATTLE_MS : CONSTANTS.BATTLE_MS;
+    return {
+      win:win, powerBefore:P, enemyPower:Z, powerAfter:powerAfter, loss:loss,
+      rollbackPower:E, durationMs:durationMs,
+      frames:Math.ceil(durationMs / (1000 / 60)),
+      reason:win ? 'power>=enemy' : 'power<enemy'
+    };
+  }
+  /** @param {bigint} from @param {bigint} to @param {number} t1000 @returns {bigint} 千分比线性插值 */
+  function interpolate(from, to, t1000) {
+    var t = BigInt(t1000);
+    return from + (to - from) * t / 1000n;
+  }
+
+  /* =========================================================================
+     T04 · 资源计划 / 三级回退（loader 显式注入，core 自身不联网）
+     ========================================================================= */
+  /** @param {object} manifest @param {object} opts @returns {object} AssetPlan */
+  function buildAssetPlan(manifest, opts) {
+    var mode = opts.mode, protocol = opts.protocol;
+    var remoteEnabled = mode === 'remote';
+    var canRequest = (mode !== 'off') && (protocol === 'http:' || protocol === 'https:');
+    var items = [];
+    for (var i = 0; i < manifest.entries.length; i++) {
+      var entry = manifest.entries[i];
+      var willRequest = false, sourceOrder = [];
+      if (canRequest && entry.primary) {
+        willRequest = true;
+        sourceOrder.push('primary');
+        for (var f = 0; f < entry.fallbacks.length; f++) sourceOrder.push('fallback:' + f);
+      }
+      items.push({entry:entry, mode:mode, willRequest:willRequest, sourceOrder:sourceOrder});
+    }
+    var count = 0;
+    for (var k = 0; k < items.length; k++) if (items[k].willRequest) count++;
+    return {
+      manifestVersion:manifest.version, mode:mode, protocol:protocol,
+      remoteEnabled:remoteEnabled, items:items, plannedRequestCount:count
+    };
+  }
+
+  /** @param {object} entry @param {object} env @returns {Promise<object>} AssetResolution 三级回退 */
+  async function resolveAssetSource(entry, env) {
+    var mode = env.mode, protocol = env.protocol, loader = env.loader;
+    var maxRetries = env.maxRetries == null ? CONSTANTS.ASSET_MAX_RETRIES : env.maxRetries;
+    var base = {
+      id:entry.id, status:'generated', source:'generator:' + entry.id,
+      reason:'', elapsedMs:0, attempts:0, downgradeCount:0
+    };
+    if (mode === 'off' || !entry.primary) return base;
+    if (protocol === 'file:') {
+      return {id:entry.id, status:'skipped', source:'', reason:'file-protocol-skip',
+              elapsedMs:0, attempts:0, downgradeCount:0};
+    }
+    var sources = [entry.primary].concat(entry.fallbacks || []);
+    var reasons = [], elapsed = 0, totalAttempts = 0, downgrade = 0;
+    for (var i = 0; i < sources.length; i++) {
+      var url = sources[i], ok = false;
+      for (var r = 0; r <= maxRetries; r++) {
+        totalAttempts++;
+        var res;
+        try { res = await loader.load(url, entry.timeoutMs); }
+        catch (e) { res = {ok:false, reason:'exception', elapsedMs:0}; }
+        if (res && typeof res.elapsedMs === 'number') elapsed += res.elapsedMs;
+        if (res && res.ok) { ok = true; break; }
+        reasons.push((i === 0 ? 'primary' : 'fallback') + '-' + (res && res.reason ? res.reason : 'error'));
+      }
+      if (ok) {
+        if (i === 0) return {id:entry.id, status:'ok', source:url, reason:'', elapsedMs:elapsed,
+                             attempts:totalAttempts, downgradeCount:downgrade};
+        return {id:entry.id, status:'fallback', source:url, reason:reasons.join(';'),
+                elapsedMs:elapsed, attempts:totalAttempts, downgradeCount:downgrade + 1};
+      }
+      downgrade++;
+    }
+    return {id:entry.id, status:'degraded', source:'generator:' + entry.id,
+            reason:reasons.join(';') || 'all-sources-failed', elapsedMs:elapsed,
+            attempts:totalAttempts, downgradeCount:downgrade};
+  }
+
+  /** @param {object} plan @param {object} states @param {object} meta @returns {object} 只读健康快照 */
+  function createHealthSnapshot(plan, states, meta) {
+    var assets = {}, summary = {generated:0, ok:0, fallback:0, degraded:0, skipped:0};
+    for (var i = 0; i < plan.items.length; i++) {
+      var id = plan.items[i].entry.id;
+      var st = states[id];
+      if (!st) st = {status:'generated', source:'generator:' + id, reason:'',
+                     elapsedMs:0, attempts:0, downgradeCount:0, lastUpdated:meta.now};
+      assets[id] = {
+        status:st.status, source:st.source, reason:st.reason,
+        elapsedMs:st.elapsedMs, attempts:st.attempts,
+        downgradeCount:st.downgradeCount, lastUpdated:st.lastUpdated
+      };
+      if (summary[st.status] !== undefined) summary[st.status]++;
+    }
+    return deepFreeze({
+      manifestVersion:plan.manifestVersion,
+      lastUpdated:meta.now,
+      externalRequestCount:meta.externalRequestCount,
+      gameplayBlocked:false,
+      remoteEnabled:!!meta.remoteEnabled,
+      mode:plan.mode,
+      assets:assets,
+      summary:summary
+    });
+  }
+
+  /* =========================================================================
+     2.5D 投影 / buildScene 全部位于 game-render IIFE 局部（裁决 U-1/U-2）。
+     core 只保留纯领域逻辑，不持有任何 Canvas / 渲染相关函数。
+     ========================================================================= */
+  /* =========================================================================
+     公开 API 收口（裁决 U-1：严格 26 项 §3.2 原表）
+     projectToScreen / buildScene 属 game-render IIFE 局部，不进入纯领域内核。
+     ========================================================================= */
+  Object.assign(Core, {
+    makeRng:makeRng,
+    seedFor:seedFor,
+    powInt:powInt,
+    maxBig:maxBig,
+    formatNumber:formatNumber,
+    formatCompact:formatCompact,
+    bigintToDecimal:bigintToDecimal,
+    applyGate:applyGate,
+    applyGatePath:applyGatePath,
+    bestPath:bestPath,
+    gateCountFor:gateCountFor,
+    isBossLevel:isBossLevel,
+    entryPowerFor:entryPowerFor,
+    enemyPowerFor:enemyPowerFor,
+    milestoneFor:milestoneFor,
+    generateLevel:generateLevel,
+    verifySolvable:verifySolvable,
+    tuneLevel:tuneLevel,
+    resolveBattle:resolveBattle,
+    interpolate:interpolate,
+    BUILTIN_MANIFEST:BUILTIN_MANIFEST,
+    buildAssetPlan:buildAssetPlan,
+    resolveAssetSource:resolveAssetSource,
+    createHealthSnapshot:createHealthSnapshot,
+    CONSTANTS:CONSTANTS,
+    PHASES:PHASES
+  });
+  Object.freeze(Core);
+
+  return Core;
+});
+</script>
+
+<script id="game-assets">
+const AssetRuntime = (function (Core) {
+  'use strict';
+  var C = Core.CONSTANTS;
+  var memCache = {};
+  var globalsDefined = false;
+
+  function nowMs() { try { return Date.now(); } catch (e) { return 0; } }
+  function protocolOf() { try { return window.location.protocol; } catch (e) { return 'file:'; } }
+  function storeGet(key) {
+    try {
+      var v = window.localStorage.getItem(key);
+      return v === null ? (memCache[key] === undefined ? null : memCache[key]) : v;
+    } catch (e) { return memCache[key] === undefined ? null : memCache[key]; }
+  }
+  function storeSet(key, val) {
+    memCache[key] = val;
+    try { window.localStorage.setItem(key, val); } catch (e) { /* 降级内存态 */ }
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function parseQuery() {
+    var out = {mode:'off', url:''};
+    try {
+      var qs = new URLSearchParams(window.location.search);
+      if (qs.get('assets') === 'local') out.mode = 'local';
+      var m = qs.get('manifest');
+      if (m) { out.mode = 'remote'; out.url = m; }
+    } catch (e) { /* 保持默认 */ }
+    return out;
+  }
+  function cmpVersion(a, b) {
+    var pa = String(a).split('.'), pb = String(b).split('.');
+    var len = Math.max(pa.length, pb.length);
+    for (var i = 0; i < len; i++) {
+      var na = parseInt(pa[i] || '0', 10) || 0;
+      var nb = parseInt(pb[i] || '0', 10) || 0;
+      if (na !== nb) return na > nb ? 1 : -1;
+    }
+    return 0;
+  }
+  function validManifest(m) {
+    if (!m || typeof m !== 'object' || !Array.isArray(m.entries)) return false;
+    for (var i = 0; i < m.entries.length; i++) {
+      var e = m.entries[i];
+      if (!e || !e.id || !e.generator) return false;
+    }
+    return true;
+  }
+  function normalizeManifest(raw) {
+    var out = {version:raw.version || '0.0.0', ttlMs:raw.ttlMs || C.MANIFEST_TTL_MS,
+               updatedAt:raw.updatedAt || 0, entries:[]};
+    for (var i = 0; i < raw.entries.length; i++) {
+      var e = raw.entries[i];
+      out.entries.push({
+        id:e.id, type:e.type || 'data', version:e.version || '1.0.0',
+        primary:e.primary || '',
+        fallbacks:Array.isArray(e.fallbacks) ? e.fallbacks.slice() : [],
+        timeoutMs:e.timeoutMs || C.MANIFEST_TIMEOUT_MS,
+        generator:e.generator, required:false
+      });
+    }
+    return out;
+  }
+
+  /* 唯一真实联网点：仅 http/https 且被显式调用时才发起。 */
+  var HttpAssetLoader = {
+    load: function (url, timeoutMs) {
+      return new Promise(function (resolve) {
+        if (protocolOf() === 'file:') {
+          resolve({ok:false, reason:'file-protocol-skip', elapsedMs:0}); return;
+        }
+        var ctl = null;
+        try { ctl = new AbortController(); } catch (e) { ctl = null; }
+        var timer = null, done = false;
+        var finish = function (res) {
+          if (done) return;
+          done = true;
+          if (timer !== null) clearTimeout(timer);
+          resolve(res);
+        };
+        if (ctl) {
+          timer = setTimeout(function () {
+            try { ctl.abort(); } catch (e) {}
+            finish({ok:false, reason:'timeout', elapsedMs:timeoutMs});
+          }, timeoutMs);
+        }
+        try {
+          window.fetch(url, ctl ? {signal:ctl.signal} : {}).then(function (resp) {
+            if (!resp.ok) { finish({ok:false, reason:'http-' + resp.status, elapsedMs:0}); return; }
+            resp.json().then(function (data) {
+              finish({ok:true, data:data, elapsedMs:0});
+            }).catch(function () { finish({ok:false, reason:'bad-json', elapsedMs:0}); });
+          }).catch(function () { finish({ok:false, reason:'network-error', elapsedMs:0}); });
+        } catch (e) {
+          finish({ok:false, reason:'fetch-exception', elapsedMs:0});
+        }
+      });
+    }
+  };
+
+  var self = {
+    mode:'off', url:'', protocol:'file:',
+    manifest:Core.BUILTIN_MANIFEST, plan:null, states:{},
+    externalRequestCount:0, loader:null, remoteEnabled:false,
+    mockMode:false, mockOpts:null, lastUpdated:0, planSeq:0
+  };
+
+  function countingLoader() {
+    return {
+      load: function (url, timeoutMs) {
+        if (self.protocol === 'file:') {
+          return Promise.resolve({ok:false, reason:'file-protocol-skip', elapsedMs:0});
+        }
+        self.externalRequestCount++;
+        return HttpAssetLoader.load(url, timeoutMs);
+      }
+    };
+  }
+  function makeMockLoader(opts) {
+    return {
+      load: function (url, timeoutMs) {
+        if (opts && opts.timeout) {
+          return new Promise(function (resolve) {
+            setTimeout(function () {
+              resolve({ok:false, reason:'timeout', elapsedMs:timeoutMs});
+            }, Math.min(30, timeoutMs));
+          });
+        }
+        return Promise.resolve({
+          ok:false,
+          reason:url.indexOf('primary') >= 0 ? '404' : 'timeout',
+          elapsedMs:1
+        });
+      }
+    };
+  }
+
+  function buildDefaultPlan() {
+    return Core.buildAssetPlan(self.manifest, {
+      mode:self.mode, protocol:self.protocol, remoteUrl:self.url, now:nowMs()
+    });
+  }
+  function getHealth() {
+    return Core.createHealthSnapshot(
+      self.plan || buildDefaultPlan(),
+      self.states,
+      {externalRequestCount:self.externalRequestCount,
+       remoteEnabled:self.remoteEnabled, now:self.lastUpdated || nowMs()}
+    );
+  }
+  function renderHealth() {
+    var h = getHealth();
+    var req = document.getElementById('health-requests');
+    if (req) req.textContent = String(h.externalRequestCount);
+    var blk = document.getElementById('health-blocked');
+    if (blk) blk.textContent = h.gameplayBlocked ? '是' : '否';
+    var tbl = document.getElementById('health-table');
+    if (!tbl) return;
+    var rows = ['<div class="hrow hhead"><span>资源</span><span>状态</span><span>来源 / 原因</span></div>'];
+    for (var i = 0; i < Core.BUILTIN_MANIFEST.entries.length; i++) {
+      var id = Core.BUILTIN_MANIFEST.entries[i].id;
+      var a = h.assets[id] || {status:'generated', source:'', reason:''};
+      var src = a.source || a.reason || '—';
+      rows.push('<div class="hrow"><span>' + esc(id) + '</span>' +
+        '<span><span class="badge ' + esc(a.status) + '">' + esc(a.status) + '</span></span>' +
+        '<span class="rsn" title="' + esc(src) + '">' + esc(src) + '</span></div>');
+    }
+    tbl.innerHTML = rows.join('');
+  }
+
+  function runPlan() {
+    self.plan = buildDefaultPlan();
+    self.planSeq++;
+    var seq = self.planSeq;
+    var chain = Promise.resolve();
+    var states = {};
+    self.plan.items.forEach(function (item) {
+      chain = chain.then(function () {
+        if (seq !== self.planSeq) return; /* 代次已作废：跳过旧链后续步骤 */
+        return Core.resolveAssetSource(item.entry, {
+          mode:self.mode, protocol:self.protocol, loader:self.loader,
+          maxRetries:C.ASSET_MAX_RETRIES, now:nowMs()
+        }).then(function (res) {
+          if (seq !== self.planSeq) return; /* 旧链不写入结果 */
+          states[item.entry.id] = {
+            status:res.status, source:res.source, reason:res.reason,
+            elapsedMs:res.elapsedMs, attempts:res.attempts,
+            downgradeCount:res.downgradeCount, lastUpdated:nowMs()
+          };
+        });
+      });
+    });
+    return chain.then(function () {
+      if (seq !== self.planSeq) return getHealth(); /* 旧链末尾不覆盖最新状态 */
+      self.states = states;
+      self.lastUpdated = nowMs();
+      self.remoteEnabled = self.mode === 'remote';
+      renderHealth();
+      return getHealth();
+    });
+  }
+
+  function fetchManifest(mode, url) {
+    if (self.protocol === 'file:') return Promise.resolve(null);
+    var target = mode === 'local' ? 'assets/manifest.json' : url;
+    if (!target) return Promise.resolve(null);
+    if (mode === 'remote') {
+      var cached = storeGet('hgz.manifest');
+      if (cached) {
+        try {
+          var box = JSON.parse(cached);
+          if (box && box.__savedAt && (nowMs() - box.__savedAt < C.MANIFEST_TTL_MS) && validManifest(box.data)) {
+            return Promise.resolve(box.data);
+          }
+        } catch (e) { /* 缓存失效，继续获取 */ }
+      }
+    }
+    self.externalRequestCount++;
+    return HttpAssetLoader.load(target, C.MANIFEST_TIMEOUT_MS).then(function (res) {
+      if (res.ok && validManifest(res.data)) {
+        if (mode === 'remote') {
+          storeSet('hgz.manifest', JSON.stringify({__savedAt:nowMs(), data:res.data}));
+        }
+        return res.data;
+      }
+      return null;
+    });
+  }
+
+  function refresh() {
+    if (self.mode === 'off') {
+      self.manifest = Core.BUILTIN_MANIFEST;
+      self.remoteEnabled = false;
+      return runPlan();
+    }
+    if (self.protocol === 'file:') {
+      // 所有联网分支硬短路：零请求，逐条标记 file-protocol-skip
+      self.planSeq++; /* 作废旧链，避免异步旧链末尾覆盖本次同步结果 */
+      self.manifest = Core.BUILTIN_MANIFEST;
+      self.plan = buildDefaultPlan();
+      var st = {};
+      for (var i = 0; i < Core.BUILTIN_MANIFEST.entries.length; i++) {
+        var id = Core.BUILTIN_MANIFEST.entries[i].id;
+        st[id] = {status:'skipped', source:'', reason:'file-protocol-skip',
+                  elapsedMs:0, attempts:0, downgradeCount:0, lastUpdated:nowMs()};
+      }
+      self.states = st;
+      self.lastUpdated = nowMs();
+      self.remoteEnabled = self.mode === 'remote';
+      renderHealth();
+      return Promise.resolve(getHealth());
+    }
+    return fetchManifest(self.mode, self.url).then(function (m) {
+      if (m && validManifest(m)) {
+        var nm = normalizeManifest(m);
+        self.manifest = cmpVersion(nm.version, Core.BUILTIN_MANIFEST.version) > 0 ? nm : Core.BUILTIN_MANIFEST;
+      } else {
+        self.manifest = Core.BUILTIN_MANIFEST;
+      }
+      return runPlan();
+    });
+  }
+
+  function setMode(mode, url) {
+    self.mode = (mode === 'local' || mode === 'remote') ? mode : 'off';
+    self.url = url || '';
+    self.protocol = protocolOf();
+    self.mockMode = false;
+    self.mockOpts = null;
+    self.loader = countingLoader();
+    return refresh();
+  }
+  function reset() {
+    self.mode = 'off'; self.url = ''; self.protocol = protocolOf();
+    self.manifest = Core.BUILTIN_MANIFEST;
+    self.mockMode = false; self.mockOpts = null;
+    self.loader = countingLoader();
+    self.externalRequestCount = 0;
+    self.remoteEnabled = false;
+    return runPlan();
+  }
+  /* 故障注入：合成带主源/备用源的清单 + MockLoader + 模拟非本地协议，
+     全程零真实网络 IO，用于演示三级回退与 degraded 兜底。 */
+  function simulateFailure(opts) {
+    self.mockOpts = opts || {};
+    var syn = {version:'9.9.9-test', ttlMs:0, updatedAt:0, entries:[]};
+    for (var i = 0; i < Core.BUILTIN_MANIFEST.entries.length; i++) {
+      var e = Core.BUILTIN_MANIFEST.entries[i];
+      syn.entries.push({
+        id:e.id, type:e.type, version:e.version,
+        primary:'mock://primary/' + e.id,
+        fallbacks:['mock://fallback/' + e.id],
+        timeoutMs:e.timeoutMs, generator:e.generator, required:false
+      });
+    }
+    self.manifest = syn;
+    self.mode = 'remote';
+    self.protocol = 'https:';
+    self.url = '';
+    self.mockMode = true;
+    self.remoteEnabled = true;
+    self.loader = makeMockLoader(self.mockOpts);
+    return runPlan();
+  }
+
+  function defineGlobals() {
+    if (globalsDefined) return;
+    globalsDefined = true;
+    Object.defineProperty(window, '__ASSET_HEALTH__', {
+      get: function () { return getHealth(); },
+      configurable:false, enumerable:true
+    });
+    Object.defineProperty(window, '__ASSET_TEST_HOOKS__', {
+      value:Object.freeze({
+        simulateFailure:function (o) { return simulateFailure(o); },
+        reset:function () { return reset(); },
+        setMode:function (m, u) { return setMode(m, u); },
+        getLoader:function () { return self.loader; },
+        refresh:function () { return refresh(); }
+      }),
+      writable:false, configurable:false, enumerable:true
+    });
+  }
+  function bindHelp() {
+    var b = document.getElementById('btn-refresh');
+    if (b) b.addEventListener('click', function () { refresh(); }, false);
+  }
+
+  var api = {
+    create:function (initial) {
+      var q = initial || parseQuery();
+      self.mode = (q && (q.mode === 'local' || q.mode === 'remote' || q.mode === 'off')) ? q.mode : 'off';
+      self.url = (q && q.url) ? q.url : '';
+      self.protocol = protocolOf();
+      self.manifest = Core.BUILTIN_MANIFEST;
+      self.loader = countingLoader();
+      self.mockMode = false; self.mockOpts = null;
+      self.externalRequestCount = 0;
+      self.remoteEnabled = self.mode === 'remote';
+      self.lastUpdated = nowMs();
+      self.plan = buildDefaultPlan();
+      self.states = {};
+      defineGlobals();
+      bindHelp();
+      refresh();
+      return api;
+    },
+    setMode:setMode, refresh:refresh, getHealth:getHealth, renderHealth:renderHealth,
+    isFileProtocol:function () { return self.protocol === 'file:'; }
+  };
+  return api;
+
+})(window.__GAME_CORE__);
+</script>
+
+<script id="game-audio">
+const AudioEngine = (function () {
+  'use strict';
+  var K = window.__GAME_CORE__.CONSTANTS;
+  var MUTE_KEY = 'hgz.muted';
+  var memMuted = null;
+
+  function loadMuted() {
+    if (memMuted !== null) return memMuted;
+    try { return window.localStorage.getItem(MUTE_KEY) === '1'; }
+    catch (e) { return false; }
+  }
+  function saveMuted(m) {
+    memMuted = m;
+    try { window.localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch (e) { /* 内存态 */ }
+  }
+
+  /* @returns {object} AudioEngine 实例；未解锁前所有调用安全无副作用 */
+  function create() {
+    var ctx = null, master = null, noiseBuf = null;
+    var muted = loadMuted();
+    var started = false, timer = null, paused = false;
+    var nextNoteTime = 0, step = 0;
+    var bpm = 128;                 // RENDERING §6：常态 128，战斗/Boss 提速 142
+    var intensity = 'normal';
+    var PENTA = [0, 2, 4, 7, 9];  // 五声音阶，避免半音冲突
+    var ROOTS = [110, 110, 146.83, 130.81, 110, 146.83, 130.81, 98];
+
+    function makeNoise(c) {
+      var len = Math.floor(c.sampleRate * 0.4);
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var d = buf.getChannelData(0);
+      var seed = 123456789;
+      for (var i = 0; i < len; i++) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        d[i] = (seed / 4294967296) * 2 - 1;
+      }
+      return buf;
+    }
+    function ensure() {
+      if (ctx) return true;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = muted ? 0 : 0.16;
+        master.connect(ctx.destination);
+        noiseBuf = makeNoise(ctx);
+        return true;
+      } catch (e) { ctx = null; return false; }
+    }
+
+    /* ---- 8 类合成音效 ---- */
+    function tone(freq, dur, type, vol, slideTo) {
+      if (!ctx || !master) return;
+      try {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type || 'sine';
+        o.frequency.setValueAtTime(freq, ctx.currentTime);
+        if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + dur);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        o.connect(g); g.connect(master);
+        o.start(ctx.currentTime); o.stop(ctx.currentTime + dur + 0.02);
+      } catch (e) {}
+    }
+    function noiseHit(dur, hp, vol) {
+      if (!ctx || !master || !noiseBuf) return;
+      try {
+        var src = ctx.createBufferSource(); src.buffer = noiseBuf;
+        var f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp || 7000;
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(vol || 0.20, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        src.connect(f); f.connect(g); g.connect(master);
+        src.start(ctx.currentTime); src.stop(ctx.currentTime + dur + 0.02);
+      } catch (e) {}
+    }
+    function chord(freqs) {
+      if (!ctx || !master) return;
+      for (var i = 0; i < freqs.length; i++) {
+        (function (f, k) {
+          try {
+            var o = ctx.createOscillator(), g = ctx.createGain();
+            o.type = 'triangle'; o.frequency.value = f;
+            var t = ctx.currentTime + k * 0.09;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(0.20, t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+            o.connect(g); g.connect(master);
+            o.start(t); o.stop(t + 0.55);
+          } catch (e) {}
+        })(freqs[i], i);
+      }
+    }
+    function play(id, opt) {
+      if (!ctx) return;
+      /* V3：连击音高递进（调研：连续同质事件的音高递增是最廉价、最有效的爽感来源）。
+         opt.pitch 为半音数，默认 0；只在门音效上使用，不影响其它音效语义。 */
+      var k = (opt && typeof opt.pitch === 'number') ? Math.pow(2, opt.pitch / 12) : 1;
+      switch (id) {
+        case 'gate.positive': tone(660 * k, 0.14, 'triangle', 0.30, 990 * k); tone(990 * k, 0.18, 'sine', 0.16); break;
+        case 'gate.negative': tone(300, 0.18, 'sawtooth', 0.22, 130); break;
+        case 'trap.hit': noiseHit(0.12, 1600, 0.16); tone(180, 0.14, 'square', 0.20, 90); break;
+        /* V4：战斗音效此前定义了却从未被调用，9.5–13 秒战斗只剩 BGM。
+           全部为极短、低音量、带节流的合成音，避免连续齐射时叠成噪声墙。 */
+        case 'fire': noiseHit(0.055, 2200, 0.085); tone(190 * k, 0.05, 'square', 0.065);
+                     tone(82, 0.06, 'sine', 0.05); break;
+        case 'bullet.hit': noiseHit(0.045, 4200, 0.070); tone(520 * k, 0.045, 'triangle', 0.050, 300 * k); break;
+        case 'boss.hit': noiseHit(0.10, 900, 0.12); tone(120, 0.13, 'square', 0.13, 70); break;
+        case 'zombie.down': tone(150 * k, 0.16, 'sawtooth', 0.15, 60); noiseHit(0.09, 900, 0.085); break;
+        case 'victory': chord([523, 659, 784, 1047]); break;
+        case 'defeat': tone(260, 0.40, 'triangle', 0.22, 90); break;
+        case 'boss.spawn': tone(70, 0.70, 'sawtooth', 0.30, 46); noiseHit(0.50, 200, 0.16); break;
+        case 'ui.click': tone(880, 0.05, 'sine', 0.16); break;
+        default: tone(440, 0.08, 'sine', 0.12); break;
+      }
+    }
+
+    /* ---- BGM 合成音序器（look-ahead 25ms 调度，4 条纯合成轨） ---- */
+    function kick(when) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(120, when);
+      o.frequency.exponentialRampToValueAtTime(45, when + 0.12);
+      g.gain.setValueAtTime(0.25, when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.13);
+      o.connect(g); g.connect(master); o.start(when); o.stop(when + 0.14);
+    }
+    function hihat(when, vol) {
+      var src = ctx.createBufferSource(); src.buffer = noiseBuf;
+      var f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(vol, when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.03);
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(when); src.stop(when + 0.035);
+    }
+    function bass(when, freq) {
+      var o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = freq;
+      f.type = 'lowpass'; f.frequency.value = 400;
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.18, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
+      o.connect(f); f.connect(g); g.connect(master);
+      o.start(when); o.stop(when + 0.24);
+    }
+    function lead(when, freq) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.06, when + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
+      o.connect(g); g.connect(master);
+      o.start(when); o.stop(when + 0.18);
+    }
+    function subPulse(when) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(64, when);
+      o.frequency.exponentialRampToValueAtTime(40, when + 0.2);
+      g.gain.setValueAtTime(0.12, when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.22);
+      o.connect(g); g.connect(master); o.start(when); o.stop(when + 0.24);
+    }
+    function scheduleStep(s, when) {
+      var bar = Math.floor(s / 16) % 8;
+      var beat = s % 16;
+      var root = ROOTS[bar];
+      if (beat % 4 === 0) kick(when);
+      if (beat % 2 === 0) hihat(when, beat % 4 === 2 ? 0.10 : 0.06);
+      if (beat % 4 === 0) bass(when, root / 2);
+      if ((bar % 2 === 1) && (beat % 4 === 0)) {
+        lead(when, root * Math.pow(2, PENTA[Math.floor(s / 4) % PENTA.length] / 12));
+      }
+      if ((intensity === 'battle' || intensity === 'boss') && beat === 0) subPulse(when);
+    }
+    function scheduler() {
+      if (!ctx || paused) return;
+      var ahead = K.BGM_SCHEDULE_AHEAD + 0.02;
+      var stepDur = 60 / bpm / 4;
+      var guard = 0;
+      while (nextNoteTime < ctx.currentTime + ahead && guard < 32) {
+        try { scheduleStep(step, nextNoteTime); } catch (e) {}
+        nextNoteTime += stepDur;
+        step = (step + 1) % K.BGM_STEPS;
+        guard++;
+      }
+    }
+    function startSequencer() {
+      if (!ctx || timer !== null) return;
+      nextNoteTime = ctx.currentTime + 0.06;
+      try { timer = setInterval(scheduler, K.BGM_LOOKAHEAD_MS); } catch (e) { timer = null; }
+    }
+
+    function unlock() {
+      if (!ensure()) return;
+      try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) {}
+      if (!started) { started = true; startSequencer(); }
+    }
+    function onVisibility(visible) {
+      paused = !visible;
+      if (!ctx) return;
+      if (visible) {
+        try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) {}
+        if (started && timer === null) startSequencer();
+      } else if (timer !== null) {
+        clearInterval(timer); timer = null;
+      }
+    }
+    function setMuted(m) {
+      muted = !!m;
+      saveMuted(muted);
+      if (master) { try { master.gain.value = muted ? 0 : 0.16; } catch (e) {} }
+    }
+    function setIntensity(t) {
+      intensity = t;
+      bpm = (t === 'battle' || t === 'boss') ? 142 : 128;
+    }
+    return {
+      unlock:unlock, play:play, setMuted:setMuted,
+      isMuted:function () { return muted; },
+      onVisibility:onVisibility, setIntensity:setIntensity,
+      isReady:function () { return !!ctx; }
+    };
+  }
+  return {create:create};
+
+})();
+</script>
+
+<script id="game-render">
+const Renderer = (function (Core) {
+  'use strict';
+  var C = Core.CONSTANTS;
+  /* V2 明亮高饱和配色：对标 Count Masters / Z Route / Mob Control 的「干净明亮 3D 卡通」，
+     取代深色霓虹夜景（用户反馈「像像素游戏」的根因之一）。 */
+  var COL = {
+    BG_TOP:'#7dd3fc', BG_BOTTOM:'#e0f2fe',
+    SKY_TOP:'#38bdf8', SKY_MID:'#7dd3fc', SKY_LOW:'#e0f2fe',
+    GROUND:'#fcd34d', GROUND2:'#f8c65a',
+    ROAD_FAR:'#e5edf7', ROAD_NEAR:'#ffffff', ROAD_EDGE:'#ffffff',
+    POS:'#0284c7', POS2:'#38bdf8', POS_GLOW:'#7dd3fc',
+    NEG:'#dc2626', NEG2:'#fb7185', NEG_GLOW:'#fecaca',
+    ALLY:'#0ea5e9', ALLY_LT:'#7dd3fc', ALLY_DK:'#0369a1',
+    ENEMY:'#e11d48', ENEMY_LT:'#fb7185', ENEMY_DK:'#9f1239',
+    BOSS:'#9333ea', NUM:'#ffffff', INK:'#0f172a',
+    TXT:'#0f172a', TXT2:'#475569', TXT_LIGHT:'#f8fafc'
+  };
+  /* 2.5D 透视（RENDERING §2：绘制专用；lane 判定仍在 [0,480] 等分区间） */
+  var HORIZON_Y = 250, NEAR_Y = 854, TEAM_Z = 0.86;
+  function projectY(z) { return HORIZON_Y + (NEAR_Y - HORIZON_Y) * Math.pow(z, 1.6); }
+  function halfWidth(z) { return 60 + 180 * z; }
+  function projectX(u, z) { return 240 + u * halfWidth(z); }
+  function scaleOf(z) { return 0.35 + 0.65 * z; }
+  function fogAlpha(z) { return 0.55 * (1 - z); }
+  function laneCenterX(lane, doorCount) { return (lane + 0.5) * (C.LOGICAL_W / doorCount); }
+  function laneU(lane, doorCount) { return (laneCenterX(lane, doorCount) - 240) / 240; }
+
+  var TIERS = {high:C.QUALITY_HIGH, medium:C.QUALITY_MID, low:C.QUALITY_LOW};
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  /* V2：关卡主题只改变天空色相，全部维持高明度（不再出现深色夜空） */
+  function themeTop(t) {
+    if (t === 'lv10') return '#22d3ee';
+    if (t === 'lv20') return '#818cf8';
+    if (t === 'lv50') return '#a78bfa';
+    if (t === 'lv100') return '#f472b6';
+    return '#38bdf8';
+  }
+
+  var R = {
+    canvas:null, ctx:null, dpr:1, scale:1,
+    quality:'high', reducedMotion:false,
+    fpsSamples:[], lastTierChange:0, lastFrameTime:0
+  };
+
+  function resize(dpr, cssW, cssH) {
+    var stage = R.canvas ? R.canvas.parentElement : null;
+    var w = cssW || (stage ? stage.clientWidth : 480);
+    var h = cssH || (stage ? stage.clientHeight : 854);
+    if (w <= 0) w = 480;
+    if (h <= 0) h = 854;
+    var scale = Math.min(w / C.LOGICAL_W, h / C.LOGICAL_H);
+    var dispW = C.LOGICAL_W * scale, dispH = C.LOGICAL_H * scale;
+    var d = Math.min(dpr || 1, 2);
+    if (R.canvas) {
+      R.canvas.width = Math.round(dispW * d);
+      R.canvas.height = Math.round(dispH * d);
+      R.canvas.style.width = dispW + 'px';
+      R.canvas.style.height = dispH + 'px';
+      R.canvas.style.left = ((w - dispW) / 2) + 'px';
+      R.canvas.style.top = ((h - dispH) / 2) + 'px';
+    }
+    R.dpr = d; R.scale = scale;
+  }
+  function setQuality(t) {
+    if (TIERS[t]) R.quality = t;
+  }
+  function project(z, x) {
+    var zz = clamp(z, 0, 1);
+    return {x:projectX(clamp(x, -1, 1), zz), y:projectY(zz), scale:scaleOf(zz), fog:fogAlpha(zz)};
+  }
+  function updateFps() {
+    var now = 0;
+    try { now = performance.now(); } catch (e) { return; }
+    if (R.lastFrameTime > 0) {
+      var dt = now - R.lastFrameTime;
+      R.fpsSamples.push(dt);
+      if (R.fpsSamples.length > C.FPS_WINDOW) R.fpsSamples.shift();
+      if (R.fpsSamples.length >= 30) {
+        var sum = 0;
+        for (var i = 0; i < R.fpsSamples.length; i++) sum += R.fpsSamples[i];
+        var fps = 1000 / Math.max(1, sum / R.fpsSamples.length);
+        if (now - R.lastTierChange > C.FPS_HOLD_MS) {
+          if (fps < C.FPS_DOWN) {
+            if (R.quality === 'high') { setQuality('medium'); R.lastTierChange = now; }
+            else if (R.quality === 'medium' && fps < 32) { setQuality('low'); R.lastTierChange = now; }
+          } else if (fps > C.FPS_UP) {
+            if (R.quality === 'low') { setQuality('medium'); R.lastTierChange = now; }
+            else if (R.quality === 'medium') { setQuality('high'); R.lastTierChange = now; }
+          }
+        }
+      }
+    }
+    R.lastFrameTime = now;
+  }
+
+  /* 渲染抽象层：运行时 state → 纯数据 Scene（不触碰 Canvas API） */
+  function buildScene(state) {
+    var q = state.quality || R.quality;
+    var tier = TIERS[q] || TIERS.high;
+    var unitCap = Math.min(tier.units, C.MAX_DRAW_UNITS);
+    var uc = clamp(Math.floor(state.unitCount || 0), 0, unitCap);
+    var frame = state.frame || 0;
+    var teamU = clamp(((state.teamX || 240) - 240) / 240, -1, 1);
+    var battle = (state.phase === 'S3' || state.phase === 'S4');
+
+    /* V4：敌人数统一由 game-session 下发（恒定编制 + 逐个击倒），
+       render 不再自己算另一套 want，否则 HUD、击倒数、画面三者对不上。 */
+    var hc = clamp(Math.floor(state.hordeCount || 0), 0, unitCap);
+
+    /* B-3：战斗清场，S3/S4 不再绘制门框；S1/S2 照常。
+       V2.1 渲染裁剪：同一时刻只画「当前门组 + 一组预告门组」。
+       旧实现把所有未出发门组都钉在 z=0.15、已通过门组钉在 z≈1.0，
+       导致地平线门框叠成一团、屏幕底部永远挂着一组巨型旧门（画面杂乱的根因）。
+       这里仅裁剪渲染数据，不改 Session 的 S.gates / 关卡生成 / 判定。 */
+    var ng = state.nextGroup == null ? 0 : state.nextGroup;
+    var shownGroups = (state.phase === 'S2') ? function (gi) { return gi >= ng && gi <= ng + 1; }
+                                            : function () { return true; };
+    var gates = battle ? [] : (state.gates || []).filter(function (g) {
+      return shownGroups(g.group);
+    }).map(function (g) {
+      return {
+        id:g.id, group:g.group, lane:g.lane, doorCount:g.doorCount,
+        z:clamp(g.z, 0, 1), op:g.op, label:g.label, valueText:g.valueText || '',
+        positive:!!g.positive, highlighted:!!g.highlighted,
+        /* V3 修复：这里曾经丢掉 trapped，导致门板警示带与「!」三角从未画出
+           （真机截图 V-3_s2_run.png 只剩地面尖刺可见，而地面陷阱在近景会被队伍挡住）。 */
+        trapped:!!g.trapped,
+        thickness:5, glow:1, scanPhase:frame * 0.04
+      };
+    });
+    gates.sort(function (a, b) { return a.z - b.z; });
+
+    /* B-2：楔形方阵，前排宽后排收窄，纵深拉开让 +1 / ×2 的膨胀看得见 */
+    /* V2.1：12 列 × 0.024 的方阵在透视里挤成一整块「砖」；
+       改 10 列、行距 0.030、隔行错位 + 确定性微抖，让个体可辨仍保持人海压迫感。 */
+    var allies = [];
+    var AC = 10;
+    var aRows = Math.max(1, Math.ceil(uc / AC));
+    for (var i = 0; i < uc; i++) {
+      var col = i % AC, row = Math.floor(i / AC);
+      var spread = Math.min(1, uc / 48);
+      var width = (0.18 + 0.14 * spread) * (1 - 0.55 * (row / aRows));
+      var ux = ((col - (AC - 1) / 2) / ((AC - 1) / 2)) * width
+               + 0.010 * Math.sin(i * 12.9898) + (row % 2 ? 0.012 : -0.012);
+      var uz = TEAM_Z - row * 0.030;
+      if (uz < 0.52) uz = 0.52;
+      allies.push({u:teamU + ux, z:uz, phase:frame * 0.25 + i * 0.7, idx:i,
+                   firing:state.phase === 'S3',
+                   /* V4：只有本拍真正开火的那几名士兵才亮枪口焰 / 后坐 */
+                   muzzle:(state.fireSlots && state.fireSlots[i]) || 0});
+    }
+    allies.sort(function (a, b) { return a.z - b.z; });
+
+    /* V4：S3 的僵尸槽位由 game-session 的确定性模拟下发（含逐只 flash/knock/dead），
+       render 只负责投影绘制。S1/S2 仍用远景尸潮的原有布局，避免改动已验证的跑酷画面。 */
+    var bt = clamp(state.battleT || 0, 0, 1);
+    var winNow = state.combatWin !== false;
+    var hordeZBase = state.phase === 'S3' ? (0.10 + (winNow ? 0.18 : 0.34) * bt) : 0.13;
+    var ZTINTS = ['#f9a8d4', '#fb7185', '#f43f5e', '#e11d48', '#e879f9', '#c084fc'];
+    var zombies = [];
+    if (state.phase === 'S3') {
+      zombies = (state.zombies || []).map(function (z) {
+        return {idx:z.idx, u:z.u, z:z.z, phase:z.phase, tint:z.tint, stagger:z.stagger,
+                hitFlash:z.flash || 0, knock:z.knock || 0, dead:z.dead || 0};
+      });
+      zombies.sort(function (a, b) { return a.z - b.z; });
+    } else {
+      var zRows = Math.max(1, Math.ceil(hc / 12));
+      var fu = (typeof state.focusX === 'number') ? (state.focusX - 240) / 240 : 0;
+      for (var k = 0; k < hc; k++) {
+        var zc = k % 12, zr = Math.floor(k / 12);
+        var zu = ((zc - 5.5) / 6) * 0.94 + 0.035 * Math.sin(frame * 0.02 + k);
+        var zz = clamp(hordeZBase + (zr / zRows) * 0.22 + 0.02 * Math.sin(frame * 0.03 + k), 0.05, 0.38);
+        zombies.push({idx:k, u:zu, z:zz, phase:frame * 0.15 + k * 0.5,
+                      tint:ZTINTS[Math.min(ZTINTS.length - 1, zr)],
+                      stagger:0.12 * Math.sin(frame * 0.08 + k * 1.7),
+                      hitFlash:0, knock:0, dead:0});
+      }
+      zombies.sort(function (a, b) { return a.z - b.z; });
+    }
+
+    /* V4：直接切片，保留 uz/zz/seed 等接触帧字段。
+       旧版在这里每帧随机撒 10 条静态「子弹」+ 7 个随机爆炸点，
+       它们与任何一只僵尸都无关，是「射击/碰撞很潦草」的根因，整体删除。 */
+    var effects = (state.effects || []).slice();
+
+    var flash = 0, shake = 0, timeScale = 1;
+    for (var m = 0; m < effects.length; m++) {
+      var fade = 1 - clamp(effects[m].t || 0, 0, 1);
+      /* V4：震动/闪白必须随 ttl 衰减，旧版整个生命周期恒亮然后一帧消失。
+         震动用二次衰减（调研：约 200ms 内衰减归零），闪白用线性。 */
+      if (effects[m].kind === 'flash') flash = Math.max(flash, (effects[m].amount || 0.06) * fade);
+      if (effects[m].kind === 'shake') shake = Math.max(shake, (effects[m].amount || 2) * fade * fade);
+    }
+    var reduced = !!state.reducedMotion;
+    if (reduced) { shake = 0; flash = 0; }
+
+    /* V2 数量感：远景人海密度随兵力「数字位数」增长（不把 BigInt 转 Number，防溢出）；
+       穿门 gateBurst 期间给增殖脉冲，实现「数字变大 → 画面立刻变多」的直接因果。 */
+    var digits = String(state.powerText || '0').replace(/[^0-9]/g, '').length;
+    var dens = clamp((digits - 1) / 8, 0, 1);
+    var crowdBoost = 0;
+    for (var cb = 0; cb < effects.length; cb++) {
+      if (effects[cb].kind === 'gateBurst') crowdBoost = Math.max(crowdBoost, 1 - clamp(effects[cb].t, 0, 1));
+    }
+    var massCap = q === 'low' ? 70 : (q === 'medium' ? 140 : 210);
+    var allyMass = Math.min(massCap, Math.round((52 + dens * 130 + uc * 0.42) * (1 + 0.30 * crowdBoost)));
+    /* V4：S3 远景「淡蓝人海」压在弹道后面会把曳光吃掉，战斗阶段收三成密度。 */
+    if (state.phase === 'S3') allyMass = Math.round(allyMass * 0.72 * Math.min(1, uc / 40));
+    /* V4 胜负分叉：胜利时远景尸潮随进度散去；失败时不但不散，还略微增援前压。 */
+    var enemyScale = winNow ? (1 - 0.72 * bt) : (1 + 0.22 * bt);
+    var enemyMass = Math.min(massCap, Math.round((56 + Math.min(1, (state.level || 1) / 12) * 110 + hc * 0.30) *
+                    enemyScale));
+    if (reduced) { allyMass = Math.min(allyMass, 70); enemyMass = Math.min(enemyMass, 70); }
+    var gTotal = Math.max(1, state.groupCount || (state.previewGroups ? state.previewGroups.length : 1));
+    var gNow = state.nextGroup == null ? 0 : clamp(state.nextGroup, 0, gTotal);
+
+    var preview = null;
+    if (state.phase === 'S1' && state.previewGroups) {
+      preview = state.previewGroups.map(function (grp) {
+        return {index:grp.index, gates:grp.gates.map(function (g) {
+          return {label:g.label, positive:g.positive, op:g.op};
+        })};
+      });
+    }
+
+    return {
+      frame:frame, level:state.level || 1, phase:state.phase || 'HOME',
+      isBoss:!!state.isBoss, theme:state.theme || 'default',
+      quality:q, tier:tier, reducedMotion:reduced,
+      cameraZ:state.cameraZ || TEAM_Z, teamU:teamU,
+      teamX:(typeof state.teamX === 'number') ? state.teamX : 240,
+      horizonY:HORIZON_Y, nearY:NEAR_Y,
+      trackScroll:(frame * 0.006) % 1,
+      lightPoles:[0.16, 0.34, 0.52, 0.70, 0.88, 1.0],
+      gates:gates, allies:allies, zombies:zombies,
+      /* V2.1：陷阱与门组同步裁剪；战斗/结算阶段全部清场，
+         避免 S2 遗留的危险带横在战场中间（旧版 S3 截图里那条红虚线） */
+      traps:battle ? [] : (state.traps || []).filter(function (t) { return shownGroups(t.group); }),
+      horde:{count:hc, z:hordeZBase, density:Math.min(1, hc / 90), tint:state.isBoss ? COL.BOSS : COL.NEG},
+      /* V3 真机复核：Boss 原 z=0.06 时 projectY≈257、体宽仅 44px，
+         看起来只是地平线上的紫色小人，撑不起「每 5 关一次」的分量。
+         移到 z=0.26（projectY≈320、体宽约 59px / 高约 105px）后成为站在尸潮中的巨物，
+         仍在近景队伍之后绘制，不遮挡门与集火准星。 */
+      boss:state.isBoss ? {u:0, z:0.26, hpRatio:clamp(1 - (state.battleT || 0), 0, 1),
+                           entrance:clamp(state.bossEntrance == null ? 1 : state.bossEntrance, 0, 1),
+                           hit:clamp(state.bossHit || 0, 0, 1)} : null,
+      effects:effects,
+      /* V4 战场数据：render 只读，不做任何二次随机生成 */
+      bullets:(state.bullets || []).slice(),
+      combatWin:winNow, battleHits:state.battleHits || 0, battleKills:state.battleKills || 0,
+      crowd:{ally:allyMass, enemy:enemyMass, boost:crowdBoost},
+      badges:{ally:String(state.powerText || '0'), enemy:String(state.enemyText || '0')},
+      progress:{current:gNow, total:gTotal},
+      /* V3 战斗集火与连击（纯表现层） */
+      combo:state.combo || 0,
+      battleWave:state.battleWave || 0,
+      focusX:(typeof state.focusX === 'number') ? state.focusX : null,
+      focusScore:state.focusScore || 0,
+      grade:state.grade || '',
+      hud:{
+        levelText:'第 ' + (state.level || 1) + ' 关',
+        powerText:String(state.powerText || '0'),
+        enemyText:String(state.enemyText || '0'),
+        bossHpText:state.bossHpText || null,
+        hintText:String(state.hintText || ''),
+        muted:!!state.muted,
+        nextGroup:state.nextGroup == null ? null : state.nextGroup
+      },
+      post:{bloom:tier.bloom, vignette:tier.vignette, flash:flash, shake:shake,
+            timeScale:1,
+            alarm:state.phase === 'S3'
+              ? (winNow ? (0.30 + 0.30 * Math.sin(frame * 0.08)) : (0.78 + 0.22 * Math.sin(frame * 0.09)))
+              : 0},
+      preview:preview,
+      battleT:clamp(state.battleT || 0, 0, 1),
+      overlay:state.overlay || null
+    };
+  }
+
+  /* ---- L0 背景 ---- */
+  function beginFrame(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    ctx.save();
+    ctx.setTransform(R.dpr * R.scale, 0, 0, R.dpr * R.scale, 0, 0);
+    if (!s.reducedMotion && s.post.shake > 0) {
+      var rr = Core.makeRng(((s.frame * 2654435761) ^ (s.level * 40503)) >>> 0);
+      ctx.translate((rr() - 0.5) * 2 * s.post.shake, (rr() - 0.5) * 2 * s.post.shake);
+    }
+    ctx.fillStyle = COL.SKY_LOW;
+    ctx.fillRect(-8, -8, C.LOGICAL_W + 16, C.LOGICAL_H + 16);
+  }
+
+  /* V2.1 远景城市：单次 path 批量填充 + 竖向渐变 + 圆角楼顶 + 屋顶天线，
+     取代旧版一排排硬边灰方块（那是背景「像素感」的主要来源）。 */
+  function drawSkyline(ctx, dx, baseY, topColor, botColor, seed, heightScale, windowColor) {
+    var rng = Core.makeRng(48271 + seed * 977);
+    var g = ctx.createLinearGradient(0, baseY - 90 * heightScale, 0, baseY);
+    g.addColorStop(0, topColor); g.addColorStop(1, botColor);
+    ctx.fillStyle = g;
+    var wins = [];
+    var x = -50 + dx;
+    ctx.beginPath();
+    while (x < C.LOGICAL_W + 50) {
+      var w = 16 + rng() * 34;
+      var h = (16 + rng() * 62) * heightScale;
+      var top = baseY - h, r = Math.min(3, w * 0.12);
+      ctx.moveTo(x, baseY);
+      ctx.lineTo(x, top + r);
+      ctx.quadraticCurveTo(x, top, x + r, top);
+      ctx.lineTo(x + w - r, top);
+      ctx.quadraticCurveTo(x + w, top, x + w, top + r);
+      ctx.lineTo(x + w, baseY);
+      ctx.closePath();
+      if (rng() < 0.34) {
+        var ax = x + w * 0.5, ah = 4 + rng() * 9;
+        ctx.rect(ax - 1.2, top - ah, 2.4, ah);
+      }
+      if (windowColor) {
+        for (var wy = top + 8; wy < baseY - 6; wy += 10) {
+          for (var wx = x + 5; wx < x + w - 4; wx += 9) {
+            if (rng() < 0.36) wins.push([wx, wy]);
+          }
+        }
+      }
+      x += w + 4 + rng() * 12;
+    }
+    ctx.fill();
+    if (windowColor && wins.length) {
+      ctx.fillStyle = windowColor;
+      ctx.beginPath();
+      for (var k = 0; k < wins.length; k++) ctx.rect(wins[k][0], wins[k][1], 3, 4);
+      ctx.fill();
+    }
+  }
+
+  /* V2.1 地平线远景尸潮：圆头小人剪影压城，取代随机红方块 */
+  function drawFarHorde(ctx, s) {
+    var rng = Core.makeRng((91117 ^ (s.level * 131)) >>> 0);
+    var n = s.quality === 'low' ? 36 : (s.quality === 'medium' ? 54 : 76);
+    ctx.fillStyle = 'rgba(225,29,72,0.48)';
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+      var x = rng() * C.LOGICAL_W;
+      var h = 4 + rng() * 8, w = 2.2 + rng() * 2.2;
+      var y = HORIZON_Y + 2 - rng() * 4;
+      ctx.moveTo(x + w, y);
+      ctx.ellipse(x + w / 2, y - h * 0.5, w * 0.5, h * 0.5, 0, 0, Math.PI * 2);
+      ctx.moveTo(x + w / 2 + w * 0.56, y - h - 1);
+      ctx.arc(x + w / 2, y - h - 1, w * 0.56, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  /* V2 明亮天空 + 沙地公路 + 远景城市 + 尸潮压城（取代深色夜空/星点/暗废墟） */
+  function drawBackground(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var W = C.LOGICAL_W, H = C.LOGICAL_H;
+    var sky = ctx.createLinearGradient(0, 0, 0, HORIZON_Y + 26);
+    sky.addColorStop(0, themeTop(s.theme));
+    sky.addColorStop(0.6, COL.SKY_MID);
+    sky.addColorStop(1, COL.SKY_LOW);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, HORIZON_Y + 26);
+
+    /* 太阳与光晕 */
+    var sg = ctx.createRadialGradient(392, 64, 6, 392, 64, 78);
+    sg.addColorStop(0, 'rgba(255,255,255,0.95)');
+    sg.addColorStop(0.28, 'rgba(254,240,138,0.55)');
+    sg.addColorStop(1, 'rgba(254,240,138,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(392, 64, 78, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fffbeb';
+    ctx.beginPath(); ctx.arc(392, 64, 21, 0, Math.PI * 2); ctx.fill();
+
+    /* 云：确定性 + 缓慢视差横移 */
+    var cr = Core.makeRng((31415 ^ (s.level * 7)) >>> 0);
+    for (var i = 0; i < 7; i++) {
+      var cw = 26 + cr() * 54, cy = 20 + cr() * 116;
+      var base = cr() * (W + 160) - 80;
+      var cx = ((base + s.frame * (0.004 + cr() * 0.006)) % (W + 160)) - 80;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.30 + cr() * 0.34).toFixed(2) + ')';
+      ctx.beginPath(); ctx.ellipse(cx, cy, cw, 8 + cr() * 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + cw * 0.35, cy - 7, cw * 0.55, 8 + cr() * 7, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    /* 地面 */
+    var gr = ctx.createLinearGradient(0, HORIZON_Y, 0, H);
+    gr.addColorStop(0, '#fde68a');
+    gr.addColorStop(0.25, COL.GROUND);
+    gr.addColorStop(1, COL.GROUND2);
+    ctx.fillStyle = gr; ctx.fillRect(0, HORIZON_Y, W, H - HORIZON_Y);
+
+    /* V2.1 沙丘与地面色块：打破「一整片纯黄」的平涂感，仍全部确定性生成 */
+    var dr = Core.makeRng((55123 ^ (s.level * 71)) >>> 0);
+    for (var di = 0; di < 9; di++) {
+      var dx = dr() * (W + 120) - 60;
+      var dy = HORIZON_Y + 8 + dr() * (H - HORIZON_Y);
+      var dw = 40 + dr() * 110, dh = 7 + dr() * 16;
+      ctx.fillStyle = di % 2 ? 'rgba(255,255,255,0.16)' : 'rgba(217,160,40,0.11)';
+      ctx.beginPath(); ctx.ellipse(dx, dy, dw, dh, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    var par = (s.frame * 0.0004) % 1;
+    drawSkyline(ctx, -par * 18, HORIZON_Y + 2,
+                'rgba(186,230,253,0.88)', 'rgba(148,197,224,0.92)', 0, 0.72, null);
+    drawSkyline(ctx, -par * 38, HORIZON_Y + 3,
+                'rgba(186,216,238,0.95)', 'rgba(125,166,201,0.96)', 1, 0.95,
+                'rgba(255,255,255,0.78)');
+    drawFarHorde(ctx, s);
+
+    var fg = ctx.createLinearGradient(0, HORIZON_Y - 20, 0, HORIZON_Y + 26);
+    fg.addColorStop(0, 'rgba(255,255,255,0)');
+    fg.addColorStop(0.5, 'rgba(255,255,255,0.55)');
+    fg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = fg; ctx.fillRect(0, HORIZON_Y - 20, W, 46);
+    if (s.isBoss) {
+      ctx.fillStyle = 'rgba(147,51,234,0.10)';
+      ctx.fillRect(0, 0, W, HORIZON_Y + 40);
+    }
+  }
+
+  /* ---- L1 跑道（V2 明亮立体公路：删细网格，改路缘厚度 + 分段路面 + 白虚线） ---- */
+  function drawLamp(ctx, x, y, sc, side) {
+    var h = 40 * sc;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(x - 1.6 * sc, y - h, 3.2 * sc, h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 5.5 * sc, y - h - 8 * sc, 11 * sc, 7 * sc);
+    ctx.fillStyle = side < 0 ? '#0ea5e9' : '#f59e0b';
+    ctx.fillRect(x - 4.4 * sc, y - h - 7 * sc, 8.8 * sc, 5 * sc);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(x - 4.5 * sc, y - 2.4 * sc, 9 * sc, 3 * sc);
+  }
+  function drawTrack(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var yTop = projectY(0), yBot = projectY(1);
+
+    /* 路面厚度（露出侧面，形成 3D 立体感） */
+    ctx.beginPath();
+    ctx.moveTo(projectX(-1, 0) - 4, yTop);
+    ctx.lineTo(projectX(1, 0) + 4, yTop);
+    ctx.lineTo(projectX(1, 1) + 10, yBot + 9);
+    ctx.lineTo(projectX(-1, 1) - 10, yBot + 9);
+    ctx.closePath();
+    ctx.fillStyle = '#8797ab'; ctx.fill();
+
+    /* 主路面：远灰近亮 */
+    ctx.beginPath();
+    ctx.moveTo(projectX(-1, 0), yTop);
+    ctx.lineTo(projectX(1, 0), yTop);
+    ctx.lineTo(projectX(1, 1), yBot);
+    ctx.lineTo(projectX(-1, 1), yBot);
+    ctx.closePath();
+    var tg = ctx.createLinearGradient(0, yTop, 0, yBot);
+    tg.addColorStop(0, COL.ROAD_FAR);
+    tg.addColorStop(1, COL.ROAD_NEAR);
+    ctx.fillStyle = tg; ctx.fill();
+
+    /* 白色路缘高光 */
+    ctx.strokeStyle = COL.ROAD_EDGE;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(projectX(-1, 0), yTop); ctx.lineTo(projectX(-1, 1), yBot);
+    ctx.moveTo(projectX(1, 0), yTop); ctx.lineTo(projectX(1, 1), yBot);
+    ctx.stroke();
+
+    /* V2.1 宽阔柔和的路面明暗带 + 近景反光：取代 14 条等距细线（像网格/像素的关键原因） */
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(projectX(-1, 0), yTop); ctx.lineTo(projectX(1, 0), yTop);
+    ctx.lineTo(projectX(1, 1), yBot); ctx.lineTo(projectX(-1, 1), yBot);
+    ctx.closePath(); ctx.clip();
+    for (var t = 0; t < 9; t++) {
+      var z0 = ((t / 9) + s.trackScroll / 9) % 1;
+      var z1 = z0 + 0.062;
+      if (z1 > 1) continue;
+      if (t % 2 === 0) {
+        var ya = projectY(z0), yb = projectY(z1);
+        /* 两端淡出的柔光带，不留下硬横线（硬横线是「网格感」的来源） */
+        var bandG = ctx.createLinearGradient(0, ya, 0, yb);
+        bandG.addColorStop(0, 'rgba(255,255,255,0)');
+        bandG.addColorStop(0.5, 'rgba(255,255,255,0.42)');
+        bandG.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = bandG;
+        ctx.fillRect(0, ya, C.LOGICAL_W, Math.max(1, yb - ya));
+      }
+    }
+    var rg = ctx.createLinearGradient(0, projectY(0.52), 0, yBot);
+    rg.addColorStop(0, 'rgba(255,255,255,0)');
+    rg.addColorStop(1, 'rgba(255,255,255,0.34)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, projectY(0.52), C.LOGICAL_W, yBot - projectY(0.52));
+    ctx.restore();
+
+    /* 中央黄色虚线 */
+    ctx.save();
+    ctx.setLineDash([16, 20]);
+    ctx.lineDashOffset = -s.trackScroll * 44;
+    ctx.strokeStyle = 'rgba(250,204,21,0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(projectX(0, 0), yTop); ctx.lineTo(projectX(0, 1), yBot); ctx.stroke();
+    ctx.restore();
+
+    for (var pi = 0; pi < s.lightPoles.length; pi++) {
+      var pz = s.lightPoles[pi], py = projectY(pz), sc = scaleOf(pz);
+      drawLamp(ctx, projectX(-1.12, pz), py, sc, -1);
+      drawLamp(ctx, projectX(1.12, pz), py, sc, 1);
+    }
+  }
+
+  /* V2 路边装饰：油桶 / 路锥 / 废弃车辆，确定性透视分布，补足场景细节 */
+  function drawRoadside(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var rng = Core.makeRng((7717 ^ (s.level * 911)) >>> 0);
+    var n = s.quality === 'low' ? 8 : 14;
+    for (var i = 0; i < n; i++) {
+      var z = ((i / n) + s.trackScroll * 0.35) % 1;
+      if (z < 0.07) continue;
+      var side = (i % 2 === 0) ? -1 : 1;
+      var x = projectX(side * (1.20 + rng() * 0.42), z);
+      var y = projectY(z), sc = scaleOf(z);
+      var kind = Math.floor(rng() * 4);
+      ctx.save(); ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(120,90,30,0.16)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 13 * sc, 3.2 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      if (kind === 0) {
+        /* 油桶：亮橙 + 白箍 + 高光 */
+        ctx.fillStyle = '#f97316'; roundRect(ctx, -7 * sc, -20 * sc, 14 * sc, 20 * sc, 3 * sc); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(-7 * sc, -14 * sc, 14 * sc, 2.6 * sc);
+        ctx.fillRect(-7 * sc, -6 * sc, 14 * sc, 2.6 * sc);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        roundRect(ctx, -5.4 * sc, -18.6 * sc, 2.4 * sc, 16 * sc, 1.2 * sc); ctx.fill();
+      } else if (kind === 1) {
+        /* 路锥：橙白双条 + 底座 */
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath(); ctx.moveTo(0, -24 * sc); ctx.lineTo(8 * sc, 0); ctx.lineTo(-8 * sc, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(-4 * sc, -10 * sc, 8 * sc, 3 * sc);
+        ctx.fillRect(-2.3 * sc, -18 * sc, 4.6 * sc, 2.4 * sc);
+        ctx.fillStyle = '#ea580c'; roundRect(ctx, -10 * sc, -2 * sc, 20 * sc, 3 * sc, 1 * sc); ctx.fill();
+      } else if (kind === 2) {
+        /* 废弃车：浅蓝车身 + 车窗 + 车轮，不再是一坨深灰小方块 */
+        ctx.fillStyle = '#94a3b8'; roundRect(ctx, -14 * sc, -14 * sc, 28 * sc, 14 * sc, 4 * sc); ctx.fill();
+        ctx.fillStyle = '#cbd5e1'; roundRect(ctx, -9 * sc, -24 * sc, 18 * sc, 12 * sc, 4 * sc); ctx.fill();
+        ctx.fillStyle = '#e0f2fe'; roundRect(ctx, -6.5 * sc, -22 * sc, 13 * sc, 6 * sc, 1.6 * sc); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(-12 * sc, -9 * sc, 24 * sc, 1.8 * sc);
+        ctx.fillStyle = '#475569';
+        ctx.beginPath(); ctx.arc(-8 * sc, 0, 3 * sc, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(8 * sc, 0, 3 * sc, 0, Math.PI * 2); ctx.fill();
+      } else {
+        /* 仙人掌：给大片黄沙补一点绿色，提升场景丰富度（确定性位置） */
+        ctx.fillStyle = '#15803d';
+        roundRect(ctx, -3 * sc, -26 * sc, 6 * sc, 26 * sc, 3 * sc); ctx.fill();
+        roundRect(ctx, -10 * sc, -18 * sc, 8 * sc, 4 * sc, 2 * sc); ctx.fill();
+        roundRect(ctx, -10 * sc, -22 * sc, 3.4 * sc, 7 * sc, 1.7 * sc); ctx.fill();
+        roundRect(ctx, 2 * sc, -14 * sc, 8 * sc, 4 * sc, 2 * sc); ctx.fill();
+        roundRect(ctx, 6.6 * sc, -18 * sc, 3.4 * sc, 7 * sc, 1.7 * sc); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.42)';
+        roundRect(ctx, -1.8 * sc, -24 * sc, 1.6 * sc, 21 * sc, 0.8 * sc); ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    if (w <= 0 || h <= 0) { ctx.beginPath(); return; }
+    var rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+  /* 门框路径：正门圆角上扬 / 负门折角下压（灰阶下仍可辨，四重编码之一） */
+  function gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, positive) {
+    ctx.beginPath();
+    if (positive) {
+      ctx.moveTo(cx - halfBot, yBot);
+      ctx.lineTo(cx - halfTop, yTop + 12);
+      ctx.quadraticCurveTo(cx - halfTop, yTop, cx - halfTop + 12, yTop);
+      ctx.lineTo(cx, yTop - 8);
+      ctx.lineTo(cx + halfTop - 12, yTop);
+      ctx.quadraticCurveTo(cx + halfTop, yTop, cx + halfTop, yTop + 12);
+      ctx.lineTo(cx + halfBot, yBot);
+    } else {
+      ctx.moveTo(cx - halfBot, yBot);
+      ctx.lineTo(cx - halfTop, yTop + 6);
+      ctx.lineTo(cx - halfTop + 12, yTop + 6);
+      ctx.lineTo(cx, yTop + 20);
+      ctx.lineTo(cx + halfTop - 12, yTop + 6);
+      ctx.lineTo(cx + halfTop, yTop + 6);
+      ctx.lineTo(cx + halfBot, yBot);
+    }
+    ctx.closePath();
+  }
+
+  /* ---- L2 门（V2：半透明发光玻璃板 + 超大粗体白字 + 电光边；保留四重编码） ---- */
+  function drawGate(g, s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var z = g.z, sc = scaleOf(z);
+    var cx = projectX(laneU(g.lane, g.doorCount), z);
+    var yBot = projectY(z), h = 132 * sc, yTop = yBot - h;
+    var laneW = (halfWidth(z) * 2) / g.doorCount;
+    var halfBot = laneW * 0.44, halfTop = halfBot * 0.88;
+    var pos = g.positive;
+    var light = pos ? COL.POS_GLOW : COL.NEG_GLOW;
+
+    /* 地面投影 */
+    ctx.fillStyle = 'rgba(71,85,105,0.22)';
+    ctx.beginPath(); ctx.ellipse(cx + 4 * sc, yBot + 2 * sc, halfBot * 1.05, 7 * sc, 0, 0, Math.PI * 2); ctx.fill();
+
+    /* 立体后板（厚度） */
+    ctx.save();
+    ctx.translate(6 * sc, 5 * sc);
+    gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+    ctx.fillStyle = pos ? '#0369a1' : '#9f1239';
+    ctx.fill();
+    ctx.restore();
+
+    /* 半透明发光玻璃板 */
+    gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+    var gg = ctx.createLinearGradient(0, yTop, 0, yBot);
+    if (pos) {
+      gg.addColorStop(0, 'rgba(125,211,252,0.88)');
+      gg.addColorStop(0.45, 'rgba(14,165,233,0.72)');
+      gg.addColorStop(1, 'rgba(2,132,199,0.86)');
+    } else {
+      gg.addColorStop(0, 'rgba(254,202,202,0.88)');
+      gg.addColorStop(0.45, 'rgba(225,29,72,0.74)');
+      gg.addColorStop(1, 'rgba(153,27,27,0.88)');
+    }
+    ctx.fillStyle = gg; ctx.fill();
+
+    /* 玻璃斜向高光 + 扫描线 */
+    ctx.save();
+    gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.beginPath();
+    ctx.moveTo(cx - halfBot, yBot);
+    ctx.lineTo(cx - halfBot + halfBot * 0.55, yTop);
+    ctx.lineTo(cx - halfBot + halfBot * 0.98, yTop);
+    ctx.lineTo(cx - halfBot + halfBot * 0.43, yBot);
+    ctx.closePath(); ctx.fill();
+    if (s.tier.scan) {
+      var span = Math.max(1, yBot - yTop);
+      var scanY = yTop + ((g.scanPhase * 46) % span);
+      ctx.fillStyle = 'rgba(255,255,255,0.30)';
+      ctx.fillRect(cx - halfBot, scanY, halfBot * 2, Math.max(1, 4 * sc));
+    }
+    ctx.restore();
+
+    /* 粗亮边框 + 外发光 */
+    ctx.save();
+    ctx.strokeStyle = pos ? '#e0f2fe' : '#ffe4e6';
+    ctx.lineWidth = Math.max(2.5, 7 * sc);
+    if (s.tier.bloom) { ctx.shadowColor = light; ctx.shadowBlur = 18 * sc; }
+    gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+    ctx.stroke();
+    ctx.restore();
+
+    /* 边缘电光（确定性，frame/group/lane 派生，禁用 Math.random） */
+    if (!s.reducedMotion && s.tier.scan) {
+      var er = Core.makeRng(((((s.frame >> 2) * 2654435761) ^ ((g.group || 0) * 7919) ^ (g.lane * 104729)) >>> 0));
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.88)';
+      ctx.lineWidth = Math.max(1, 1.6 * sc);
+      for (var e = 0; e < 4; e++) {
+        var ex = cx + (e % 2 === 0 ? -1 : 1) * halfBot * (0.86 + er() * 0.16);
+        var ey = yTop + (0.16 + e * 0.22) * h;
+        ctx.beginPath(); ctx.moveTo(ex, ey);
+        for (var q = 0; q < 3; q++) ctx.lineTo(ex + (er() - 0.5) * 9 * sc, ey + (q + 1) * 4 * sc);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    /* 对准高亮：白色粗虚线框 + 下方箭头 */
+    if (g.highlighted) {
+      ctx.save();
+      ctx.setLineDash([7, 5]);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, 3 * sc);
+      gatePath(ctx, cx, yTop - 4, yBot + 4, halfTop + 4, halfBot + 4, pos);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(cx, yBot + 17 * sc);
+      ctx.lineTo(cx - 9 * sc, yBot + 4 * sc);
+      ctx.lineTo(cx + 9 * sc, yBot + 4 * sc);
+      ctx.closePath(); ctx.fill();
+    }
+
+    /* 超大白色粗体数字 + 运算符箭头（灰阶下仍可辨） */
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var fs = Math.max(18, 48 * sc);
+    var FONT = ' -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    ctx.font = '900 ' + fs.toFixed(1) + 'px' + FONT;
+    /* V3：门值变长（+2.76K）后会撑破门板、与邻门相撞。
+       按门洞可用宽度自适应缩字，保证任何量级都不溢出。 */
+    var maxW = laneW * 0.86;
+    var tw = ctx.measureText(g.label).width;
+    if (tw > maxW && tw > 0) {
+      fs = Math.max(11, fs * maxW / tw);
+      ctx.font = '900 ' + fs.toFixed(1) + 'px' + FONT;
+    }
+    ctx.lineWidth = Math.max(2.5, 5 * sc);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(15,23,42,0.92)';
+    ctx.fillStyle = '#ffffff';
+    var ly = yTop + h * 0.40;
+    ctx.strokeText(g.label, cx, ly);
+    ctx.fillText(g.label, cx, ly);
+    ctx.font = '800 ' + Math.max(11, 19 * sc).toFixed(1) + 'px sans-serif';
+    var ay = yTop + h * 0.76;
+    ctx.strokeText(pos ? '▲' : '▼', cx, ay);
+    ctx.fillText(pos ? '▲' : '▼', cx, ay);
+    ctx.restore();
+
+    /* V3 陷阱门标识：顶部黄黑斜纹 + 数字下方警示三角。
+       不改颜色编码（正门仍是蓝、负门仍是红），只在门板上叠加危险条，
+       灰阶下依然靠「条纹密度」与「三角形」两个形状通道可辨。 */
+    if (g.trapped) {
+      ctx.save();
+      gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+      ctx.clip();
+      var bandH = Math.max(9, 17 * sc);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx - halfBot, yTop, halfBot * 2, bandH);
+      ctx.fillStyle = '#111827';
+      for (var bx2 = cx - halfBot; bx2 < cx + halfBot; bx2 += Math.max(8, 13 * sc)) {
+        ctx.beginPath();
+        ctx.moveTo(bx2, yTop + bandH);
+        ctx.lineTo(bx2 + bandH * 0.8, yTop);
+        ctx.lineTo(bx2 + bandH * 0.8 + bandH * 0.45, yTop);
+        ctx.lineTo(bx2 + bandH * 0.45, yTop + bandH);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      var wy = yTop + h * 0.60;
+      ctx.save();
+      ctx.fillStyle = 'rgba(17,24,39,0.92)';
+      ctx.beginPath();
+      ctx.moveTo(cx, wy - Math.max(5, 8 * sc));
+      ctx.lineTo(cx + Math.max(6, 10 * sc), wy + Math.max(4, 6 * sc));
+      ctx.lineTo(cx - Math.max(6, 10 * sc), wy + Math.max(4, 6 * sc));
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '900 ' + Math.max(7, 10 * sc).toFixed(1) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('!', cx, wy + Math.max(1, 1.5 * sc));
+      ctx.restore();
+    }
+
+    /* 远门白雾淡化（明亮主题，不再压黑） */
+    var fa = fogAlpha(z);
+    if (fa > 0.02) {
+      gatePath(ctx, cx, yTop, yBot, halfTop, halfBot, pos);
+      ctx.fillStyle = 'rgba(255,255,255,' + (fa * 0.42).toFixed(3) + ')';
+      ctx.fill();
+    }
+  }
+
+  /* ---- L1b 人海规模层（V2.1）：圆润立体小人 + 有机簇状排布 ----
+     旧实现 =「26 列严格网格 + 1~3px 圆点/小矩形 + 双色隔行」，
+     在透视里退化成一排排蓝 / 红虚线，是「像素感」的主要来源。
+     新实现：每行错位 + 抖动 + 抖动纵深，形成连绵人潮；每个单位 =
+     圆头 + 胶囊身 + 两条圆头腿，且设最小尺寸，远处也能看出人形；
+     按纵深分 3 档明度做体积感；整簇补一层柔和落地影。
+     仍然是「批量 path + 少量 fill」，210 人仅 5 次 fill，性能可控。 */
+  function drawMassUnits(ctx, s, n, side) {
+    if (n <= 0) return;
+    var ally = side === 'ally';
+    var rng = Core.makeRng(((ally ? 4242 : 8686) ^ (s.level * 331) ^ ((s.frame >> 4) * 17)) >>> 0);
+    /* V3：远景人海的纵深必须收在队伍之后（0.50–0.70），
+       否则会和近景单位重叠成「半透明幽灵人」，反而削弱人数感。 */
+    var far = ally ? 0.50 : 0.09;
+    var near = ally ? 0.70 : 0.40;
+    var cols = 15;
+    var rows = Math.max(1, Math.ceil(n / cols));
+    var bodyCols = ally ? ['#bae6fd', '#7dd3fc', '#0ea5e9']
+                        : ['#fecdd3', '#fb7185', '#e11d48'];
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var col = i % cols, row = Math.floor(i / cols);
+      var z = clamp(far + (row / rows) * (near - far) + (rng() - 0.5) * 0.016, 0.06, 0.94);
+      var stagger = (row % 2) ? 0.5 : 0;
+      /* V3：远景人海必须跟着队伍的实际横向位置走，否则队伍移到一侧时，
+         屏幕中央会留下一团「无主的幽灵人」，看起来像两个队伍。 */
+      var uCenter = (side === 'ally') ? (typeof s.teamU === 'number' ? s.teamU : 0) : 0;
+      /* 横向宽度必须匹配近景方阵（约 ±0.24），否则远景剪影会铺满整条路，
+         与近景窄方阵形成「两群人」的错觉。敌方保持较宽，用来表达「漫山遍野」。 */
+      var spreadU = (side === 'ally') ? 0.26 : 0.72;
+      var u = uCenter + ((col + stagger - (cols - 1) / 2) / ((cols - 1) / 2)) * spreadU
+              + (rng() - 0.5) * 0.05
+              + 0.008 * Math.sin(s.frame * 0.045 + i * 1.3);
+      var sc = scaleOf(z);
+      var hr = Math.max(2.0, 3.3 * sc);
+      var bw = Math.max(2.2, 3.6 * sc);
+      var bh = Math.max(3.4, 7.0 * sc);
+      var y = projectY(z);
+      var hy = y - bh - hr * 1.55;
+      pts.push({x:projectX(u, z), y:y, hy:hy, hr:hr, bw:bw, bh:bh,
+                band:Math.min(2, Math.floor((row / rows) * 3))});
+    }
+    ctx.save();
+    /* 逐人小落地影（一次 path 一次 fill）。V2.1 复核：整簇大椭圆会把半条跑道染成灰紫，
+       观感像「贴了一层脏膜」，改为局部落地影，人形更立体且不破坏明亮路面。 */
+    ctx.fillStyle = ally ? 'rgba(2,132,199,0.13)' : 'rgba(190,18,60,0.11)';
+    ctx.beginPath();
+    for (var d = 0; d < pts.length; d++) {
+      var pd = pts[d];
+      ctx.moveTo(pd.x + pd.bw * 1.1, pd.y);
+      ctx.ellipse(pd.x, pd.y, pd.bw * 1.1, Math.max(1.1, pd.bh * 0.16), 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+
+    for (var band = 0; band < 3; band++) {
+      ctx.fillStyle = bodyCols[band];
+      ctx.beginPath();
+      for (var b = 0; b < pts.length; b++) {
+        var p = pts[b];
+        if (p.band !== band) continue;
+        ctx.moveTo(p.x + p.hr, p.hy);
+        ctx.arc(p.x, p.hy, p.hr, 0, Math.PI * 2);
+        ctx.moveTo(p.x + p.bw, p.hy + p.hr * 0.75 + p.bh * 0.48);
+        ctx.ellipse(p.x, p.hy + p.hr * 0.75 + p.bh * 0.48,
+                    p.bw, p.bh * 0.52, 0, 0, Math.PI * 2);
+        ctx.rect(p.x - p.bw * 0.86, p.y - p.bh * 0.30, p.bw * 0.62, p.bh * 0.32);
+        ctx.rect(p.x + p.bw * 0.24, p.y - p.bh * 0.30, p.bw * 0.62, p.bh * 0.32);
+      }
+      ctx.fill();
+    }
+    /* 统一高光：头顶月牙 + 左肩亮边，白色对蓝 / 红都成立，一次 fill */
+    ctx.fillStyle = 'rgba(255,255,255,0.60)';
+    ctx.beginPath();
+    for (var h = 0; h < pts.length; h++) {
+      var q = pts[h];
+      ctx.moveTo(q.x - q.hr * 0.30 + q.hr * 0.44, q.hy - q.hr * 0.30);
+      ctx.arc(q.x - q.hr * 0.30, q.hy - q.hr * 0.30, q.hr * 0.44, 0, Math.PI * 2);
+      ctx.moveTo(q.x - q.bw * 0.52 + q.bw * 0.20, q.hy + q.hr * 0.75 + q.bh * 0.24);
+      ctx.ellipse(q.x - q.bw * 0.52, q.hy + q.hr * 0.75 + q.bh * 0.24,
+                  q.bw * 0.20, q.bh * 0.24, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCrowdMass(s) {
+    var ctx = R.ctx;
+    if (!ctx || !s.crowd) return;
+    drawMassUnits(ctx, s, s.crowd.enemy, 'enemy');
+    drawMassUnits(ctx, s, s.crowd.ally, 'ally');
+  }
+
+  /* 人群数字气泡：对标 Count Masters 的 200 / 1000 大数字 */
+  function drawBadge(ctx, x, y, text, color) {
+    ctx.save();
+    ctx.font = '900 19px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    var w = Math.max(54, Math.min(190, ctx.measureText(text).width + 28));
+    var h = 27;
+    ctx.fillStyle = 'rgba(15,23,42,0.20)';
+    roundRect(ctx, x - w / 2 + 2, y - h / 2 + 3, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = color;
+    roundRect(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    roundRect(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y + h / 2 - 1); ctx.lineTo(x + 6, y + h / 2 - 1); ctx.lineTo(x, y + h / 2 + 7);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(15,23,42,0.55)';
+    ctx.strokeText(text, x, y + 1);
+    ctx.fillText(text, x, y + 1);
+    ctx.restore();
+  }
+
+  function drawCrowdBadges(s) {
+    var ctx = R.ctx;
+    if (!ctx || !s.badges || s.phase === 'HOME') return;
+    /* V4：全灭后远景人海为 0，若还画一个「0」气泡会像凭空漂浮的空标签。 */
+    if (s.crowd && s.crowd.ally <= 0) return;
+    var ax = projectX(s.teamU, 0.86), ay = projectY(0.86) - 96;
+    drawBadge(ctx, clamp(ax, 62, C.LOGICAL_W - 62), ay, s.badges.ally, '#0284c7');
+    /* V3：敌方气泡会正好压在远处门组上（截图实证），而「敌方剩余」HUD 已常驻显示，
+       同信息重复且挡住玩家最需要的决策元素。按「juice 不得掩盖状态」原则移除场景气泡。 */
+  }
+
+  /* 顶部关卡进度条 + 三段刻度 + 终点格旗（目标感，对标 Count Masters）
+     V3：单关从 3–6 组变 20–30 组，线性进度条已经看不出「还有多久」，
+     故加两处分段刻度，把长关卡切成三段可感知的推进节拍。 */
+  function drawProgress(s) {
+    var ctx = R.ctx;
+    if (!ctx || !s.progress || s.phase === 'HOME') return;
+    var total = s.progress.total, cur = s.progress.current;
+    var x0 = 126, x1 = 286, y = 26;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    roundRect(ctx, x0, y - 5, x1 - x0, 10, 5); ctx.fill();
+    var ratio = clamp(cur / Math.max(1, total), 0, 1);
+    if (ratio > 0) {
+      ctx.fillStyle = '#0ea5e9';
+      roundRect(ctx, x0, y - 5, (x1 - x0) * ratio, 10, 5); ctx.fill();
+    }
+    /* 两处分段刻度（对应 3 个 sector） */
+    for (var sg = 1; sg <= 2; sg++) {
+      var sx = x0 + (x1 - x0) * (sg / 3);
+      ctx.fillStyle = 'rgba(15,23,42,0.30)';
+      ctx.fillRect(sx - 1, y - 8, 2, 16);
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#0369a1'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x0 + (x1 - x0) * ratio, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = COL.INK;
+    ctx.fillRect(x1 + 4, y - 9, 2, 18);
+    for (var r = 0; r < 2; r++) {
+      for (var c = 0; c < 2; c++) {
+        ctx.fillStyle = (r + c) % 2 ? '#ffffff' : '#0f172a';
+        ctx.fillRect(x1 + 6 + c * 5, y - 9 + r * 5, 5, 5);
+      }
+    }
+    ctx.fillStyle = COL.TXT2;
+    ctx.font = '700 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cur + ' / ' + total + ' 组门', (x0 + x1) / 2, y + 18);
+    ctx.restore();
+  }
+
+  /* ---- L2b 关卡内陷阱（4 种样式：尖刺/锯刃/火焰/压锤；确定性动画、零资源） ---- */
+  function drawTraps(s) {
+    var ctx = R.ctx;
+    if (!ctx || !s.traps) return;
+    for (var i = 0; i < s.traps.length; i++) {
+      var t = s.traps[i], z = t.z;
+      var u = ((t.lane + 0.5) / t.doorCount) * 2 - 1;
+      var cx = projectX(u, z), yG = projectY(z);
+      var sc = scaleOf(z);
+      var laneW = (halfWidth(z) * 2) / t.doorCount;
+      var half = laneW * 0.46;
+      var pulse = s.tier.scan ? (0.5 + 0.5 * Math.sin(s.frame * 0.18 + t.lane)) : 0.6;
+      ctx.save();
+      ctx.translate(cx, yG);
+      // 阴影
+      if (s.tier.shadow) {
+        ctx.fillStyle = 'rgba(0,0,0,0.32)';
+        ctx.beginPath(); ctx.ellipse(0, 0, half * 1.1, half * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      // 危险地带：红色警示带（始终可见；高亮时更亮）
+      var bandA = t.highlighted ? 0.55 + 0.25 * pulse : 0.34 + 0.12 * pulse;
+      ctx.fillStyle = 'rgba(239,68,68,' + bandA.toFixed(2) + ')';
+      ctx.fillRect(-half, -3 * sc, half * 2, 6 * sc);
+      // 黑黄斜纹危险条
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-half, -3 * sc, half * 2, 6 * sc); ctx.clip();
+      ctx.strokeStyle = 'rgba(15,23,42,0.55)'; ctx.lineWidth = Math.max(1, 2 * sc);
+      for (var b = -half - 6 * sc; b < half + 6 * sc; b += 6 * sc) {
+        ctx.beginPath(); ctx.moveTo(b, 4 * sc); ctx.lineTo(b + 4 * sc, -4 * sc); ctx.stroke();
+      }
+      ctx.restore();
+      // 高亮红框（玩家当前对准的陷阱 lane）
+      if (t.highlighted) {
+        ctx.strokeStyle = 'rgba(255,80,80,' + (0.5 + 0.4 * pulse).toFixed(2) + ')';
+        ctx.lineWidth = Math.max(1.5, 2 * sc);
+        ctx.strokeRect(-half - 2, -30 * sc, half * 2 + 4, 30 * sc);
+      }
+      // 类型精灵（放大 1.25 倍，远距仍可见）
+      var sc2 = sc * 1.25;
+      switch (t.type) {
+        case 'spike': drawSpike(ctx, half, sc2); break;
+        case 'saw':   drawSaw(ctx, half, sc2, s.frame); break;
+        case 'fire':  drawFire(ctx, half, sc2, s.frame); break;
+        default:      drawCrusher(ctx, half, sc2, s.frame); break;
+      }
+      ctx.restore();
+    }
+  }
+  function drawSpike(ctx, half, sc) {
+    var n = 4, w = (half * 2) / n;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = Math.max(1, 1 * sc);
+    for (var k = 0; k < n; k++) {
+      var x0 = -half + k * w;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0); ctx.lineTo(x0 + w / 2, -16 * sc); ctx.lineTo(x0 + w, 0); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-half, -3 * sc, half * 2, 3 * sc);
+  }
+  function drawSaw(ctx, half, sc, frame) {
+    var r = 11 * sc, cy = -r - 2 * sc, rot = frame * 0.12;
+    ctx.save(); ctx.translate(0, cy); ctx.rotate(rot);
+    ctx.fillStyle = '#94a3b8'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = Math.max(1, 1 * sc);
+    var teeth = 10;
+    ctx.beginPath();
+    for (var k = 0; k < teeth; k++) {
+      var a0 = (k / teeth) * Math.PI * 2, a1 = ((k + 0.5) / teeth) * Math.PI * 2;
+      ctx.lineTo(Math.cos(a0) * r, Math.sin(a0) * r);
+      ctx.lineTo(Math.cos(a1) * (r + 3 * sc), Math.sin(a1) * (r + 3 * sc));
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function drawFire(ctx, half, sc, frame) {
+    var n = 3, w = (half * 2) / n;
+    for (var k = 0; k < n; k++) {
+      var x0 = -half + k * w + w / 2;
+      var fl = 14 * sc + 8 * sc * Math.abs(Math.sin(frame * 0.2 + k * 1.7));
+      var g = ctx.createLinearGradient(0, 0, 0, -fl);
+      g.addColorStop(0, '#fde047'); g.addColorStop(0.5, '#f97316'); g.addColorStop(1, 'rgba(239,68,68,0.2)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x0 - w * 0.4, 0);
+      ctx.quadraticCurveTo(x0 - w * 0.2, -fl * 0.6, x0, -fl);
+      ctx.quadraticCurveTo(x0 + w * 0.2, -fl * 0.6, x0 + w * 0.4, 0);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  function drawCrusher(ctx, half, sc, frame) {
+    var bob = Math.sin(frame * 0.08) * 4 * sc;
+    var bw = half * 1.7, bh = 14 * sc;
+    var by = -bh - 12 * sc + bob;
+    ctx.fillStyle = '#475569'; ctx.strokeStyle = '#0f172a'; ctx.lineWidth = Math.max(1, 1 * sc);
+    ctx.fillRect(-bw / 2, by, bw, bh); ctx.strokeRect(-bw / 2, by, bw, bh);
+    ctx.fillStyle = '#1f2937';
+    ctx.beginPath();
+    ctx.moveTo(-bw / 2, by + bh); ctx.lineTo(0, by + bh + 6 * sc); ctx.lineTo(bw / 2, by + bh); ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-bw / 2 - 2 * sc, -2 * sc, 3 * sc, by + 2 * sc);
+    ctx.fillRect(bw / 2 - 1 * sc, -2 * sc, 3 * sc, by + 2 * sc);
+  }
+
+  /* ---- L3 我方小兵（V2.1：明亮圆润立体小人，保留头盔/步枪身份） ----
+     旧实现的深色护甲 + 黑描边 + 黑步枪，在密集方阵里糊成一团黑绿方块；
+     改为白→浅蓝→亮蓝的胶囊渐变、圆头、亮银步枪、蓝色柔和落地影。 */
+  var ARMOR3 = ['#0ea5e9', '#06b6d4', '#38bdf8'];
+  function drawUnit(a, s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var sc = scaleOf(a.z) * 1.4;
+    var x = projectX(a.u, a.z), y = projectY(a.z);
+    var t = a.phase || 0, idx = a.idx || 0;
+    var armor = ARMOR3[idx % 3];
+    var swing = Math.sin(t) * 3.0 * sc;
+    var swing2 = Math.sin(t + Math.PI) * 3.0 * sc;
+    var lift = Math.max(0, Math.sin(t)) * 2.0 * sc;
+    var lift2 = Math.max(0, Math.sin(t + Math.PI)) * 2.0 * sc;
+    ctx.save();
+    ctx.translate(x, y);
+    if (s.tier.shadow) {
+      ctx.fillStyle = 'rgba(2,132,199,0.24)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 8 * sc, 3 * sc, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    drawLeg(ctx, -2 * sc, -2 * sc, swing, lift, sc, '#0369a1');
+    drawLeg(ctx, 2 * sc, -2 * sc, swing2, lift2, sc, '#0284c7');
+    var bodyTop = -20 * sc, bodyBot = -7 * sc;
+    var bg = ctx.createLinearGradient(0, bodyTop, 0, bodyBot);
+    bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.42, '#bae6fd'); bg.addColorStop(1, armor);
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = 'rgba(3,105,161,0.36)'; ctx.lineWidth = Math.max(0.8, 0.9 * sc);
+    roundRect(ctx, -4.2 * sc, bodyTop, 8.4 * sc, bodyBot - bodyTop, 3.6 * sc); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    roundRect(ctx, -3.1 * sc, bodyTop + 0.9 * sc, 2.3 * sc, 6 * sc, 1.1 * sc); ctx.fill();
+    ctx.fillStyle = armor;
+    ctx.beginPath(); ctx.arc(-4.3 * sc, bodyTop + 1.6 * sc, 2.5 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4.3 * sc, bodyTop + 1.6 * sc, 2.5 * sc, 0, Math.PI * 2); ctx.fill();
+    var hy = bodyTop - 5.2 * sc;
+    ctx.fillStyle = '#ffd8a8';
+    ctx.beginPath(); ctx.arc(0, hy, 3.4 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = armor;
+    ctx.beginPath(); ctx.arc(0, hy - 0.7 * sc, 3.7 * sc, Math.PI, 0); ctx.fill();
+    ctx.fillRect(-3.7 * sc, hy - 0.7 * sc, 7.4 * sc, 1.9 * sc);
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    ctx.beginPath(); ctx.ellipse(-1.2 * sc, hy - 2.3 * sc, 1.5 * sc, 0.8 * sc, -0.3, 0, Math.PI * 2); ctx.fill();
+    var muzzle = clamp(a.muzzle || 0, 0, 1);
+    var recoil = a.firing ? (Math.sin(t * 2) * 0.7 + muzzle * 2.8) * sc : 0;
+    ctx.strokeStyle = '#0369a1'; ctx.lineWidth = Math.max(1, 1.7 * sc); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-2 * sc, bodyTop + 4 * sc); ctx.lineTo(3 * sc, bodyTop + 1 * sc); ctx.stroke();
+    ctx.save();
+    ctx.translate(4 * sc, bodyTop - 1 * sc); ctx.rotate(-0.22);
+    ctx.fillStyle = '#e2e8f0'; ctx.strokeStyle = 'rgba(3,105,161,0.45)';
+    ctx.lineWidth = Math.max(0.7, 0.7 * sc);
+    roundRect(ctx, -1 * sc, -1.2 * sc - recoil, 12 * sc, 2.4 * sc, 1 * sc); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#0ea5e9';
+    roundRect(ctx, 8 * sc, -1.7 * sc - recoil, 3.4 * sc, 4 * sc, 1 * sc); ctx.fill();
+    /* V4：枪口焰只在实际开火的那一拍出现（80ms 星形焰 + 白热芯），
+       旧版只要 firing 就常亮一个 2.5px 黄点，等于「所有人一直开着灯」。 */
+    if (a.firing && muzzle > 0.02 && !s.reducedMotion) {
+      ctx.save();
+      ctx.globalAlpha = muzzle;
+      ctx.translate(13.5 * sc, -recoil);
+      var mr = (3.2 + 5.2 * muzzle) * sc;
+      ctx.fillStyle = 'rgba(253,224,71,0.95)';
+      ctx.beginPath();
+      for (var msp = 0; msp < 8; msp++) {
+        var ma = msp * Math.PI / 4 + idx * 0.37;
+        var rr = (msp % 2 ? 0.38 : 1) * mr;
+        var px = Math.cos(ma) * rr, py = Math.sin(ma) * rr * 0.72;
+        if (msp === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(0, 0, (1.1 + 1.3 * muzzle) * sc, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.restore();
+  }
+  function drawLeg(ctx, hx, hy, swing, lift, sc, col) {
+    var thigh = 5 * sc, kneeX = hx + swing * 0.6, kneeY = hy - thigh + lift;
+    var footX = kneeX + swing * 0.5, footY = hy - 0.5 * sc;
+    ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, 2.2 * sc); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY); ctx.stroke();
+    ctx.fillStyle = '#0369a1';
+    ctx.beginPath(); ctx.ellipse(footX, footY, 2.3 * sc, 1.2 * sc, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /* ---- L3 僵尸潮（B-1：密集纵深 + 紫红分级 + 蹒跚/前伸臂/破衣/凹陷眼窝 + 变体） ---- */
+  function drawHorde(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var list = s.zombies;
+    for (var i = 0; i < list.length; i++) {
+      var z = list[i], sc = scaleOf(z.z) * 1.15;
+      var x = projectX(z.u, z.z), y = projectY(z.z);
+      var t = z.phase || 0;
+      var dead = clamp(z.dead || 0, 0, 1);
+      if (dead >= 1) {
+        /* V4 战场留痕：被击倒的僵尸留一个淡淡的影子，避免「人凭空消失」。 */
+        ctx.save();
+        ctx.globalAlpha = 0.14;
+        ctx.fillStyle = '#9f1239';
+        ctx.beginPath(); ctx.ellipse(x, y, 7 * sc, 2.4 * sc, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      var variant = i % 4; // 0 蹒跚 1 前倾 2 臃肿 3 独臂
+      var lean = (variant === 1) ? 0.28 : (variant === 2 ? -0.08 : 0.14);
+      var ls = Math.sin(t) * 2.0 * sc;
+      var armSwing = Math.sin(t * 0.8) * 2 * sc;
+      ctx.save();
+      ctx.translate(x, y);
+      /* V4 接触帧反馈：击退 + 挤压（squash），190ms 衰减；死亡溶解 340ms。 */
+      var knock = clamp(z.knock || 0, 0, 1);
+      if (knock > 0) {
+        ctx.translate(knock * 12 * sc, 0);
+        ctx.scale(1 + 0.10 * knock, 1 - 0.13 * knock);
+      }
+      if (dead > 0) {
+        ctx.globalAlpha = 1 - dead;
+        ctx.translate(0, -dead * 12 * sc);
+        ctx.rotate(dead * 0.85);
+        ctx.scale(1, 1 - dead * 0.42);
+      }
+      ctx.rotate((z.stagger || 0) + lean + 0.10 * Math.sin(t * 0.6));
+      if (s.tier.shadow) {
+        ctx.fillStyle = 'rgba(190,18,60,0.22)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 6 * sc, 2.2 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      drawZLeg(ctx, -1.5 * sc, -2 * sc, ls, sc, variant);
+      drawZLeg(ctx, 1.5 * sc, -2 * sc, -ls, sc, variant);
+      var tint = z.tint || s.horde.tint;
+      var bodyTop = -17 * sc, bodyBot = -5 * sc;
+      var bg = ctx.createLinearGradient(0, bodyTop, 0, bodyBot);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.32, tint); bg.addColorStop(1, '#e11d48');
+      ctx.fillStyle = bg; ctx.strokeStyle = 'rgba(136,19,55,0.55)'; ctx.lineWidth = Math.max(1, 1.1 * sc);
+      ctx.beginPath();
+      ctx.moveTo(-4 * sc, bodyBot);
+      ctx.lineTo(-4.4 * sc, bodyTop + 2 * sc);
+      ctx.lineTo(-2 * sc, bodyTop - 1 * sc);
+      ctx.lineTo(0, bodyTop + 1 * sc);
+      ctx.lineTo(2.2 * sc, bodyTop - 1 * sc);
+      ctx.lineTo(4.4 * sc, bodyTop + 1 * sc);
+      ctx.lineTo(4 * sc, bodyBot);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(136,19,55,0.45)'; ctx.lineWidth = Math.max(1, 0.8 * sc);
+      ctx.beginPath(); ctx.moveTo(-1 * sc, bodyBot - 1 * sc); ctx.lineTo(-0.4 * sc, bodyTop + 4 * sc); ctx.lineTo(1 * sc, bodyBot - 2 * sc); ctx.stroke();
+      ctx.fillStyle = '#fff1f2';
+      ctx.beginPath(); ctx.arc(-2.4 * sc, bodyTop + 3 * sc, 0.9 * sc, 0, Math.PI * 2); ctx.fill();
+      var hy = bodyTop - 4 * sc;
+      ctx.fillStyle = '#c9dc9a';
+      ctx.beginPath(); ctx.arc(0, hy, 3 * sc, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(136,19,55,0.45)'; ctx.lineWidth = Math.max(1, 0.8 * sc); ctx.stroke();
+      ctx.fillStyle = '#881337';
+      ctx.beginPath(); ctx.arc(-1.1 * sc, hy - 0.4 * sc, 1 * sc, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(1.1 * sc, hy - 0.4 * sc, 1 * sc, 0, Math.PI * 2); ctx.fill();
+      if (s.tier.shadow) {
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath(); ctx.arc(-1.1 * sc, hy - 0.4 * sc, 0.4 * sc, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(1.1 * sc, hy - 0.4 * sc, 0.4 * sc, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = '#9f1239'; ctx.lineWidth = Math.max(1, 0.8 * sc);
+      ctx.beginPath(); ctx.moveTo(-1 * sc, hy + 1.4 * sc); ctx.lineTo(1 * sc, hy + 1.6 * sc); ctx.stroke();
+      ctx.strokeStyle = '#a3b86c'; ctx.lineWidth = Math.max(1, 1.8 * sc); ctx.lineCap = 'round';
+      if (variant !== 3) {
+        ctx.beginPath(); ctx.moveTo(-3 * sc, bodyTop + 2 * sc);
+        ctx.lineTo(-7 * sc - armSwing, bodyTop - 1 * sc);
+        ctx.lineTo(-8.5 * sc - armSwing, bodyTop - 3 * sc); ctx.stroke();
+        ctx.fillStyle = '#fff1f2';
+        ctx.beginPath(); ctx.arc(-8.5 * sc - armSwing, bodyTop - 3 * sc, 1 * sc, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.beginPath(); ctx.moveTo(3 * sc, bodyTop + 2 * sc);
+      ctx.lineTo(6 * sc + armSwing * 0.5, bodyTop);
+      ctx.lineTo(7.5 * sc + armSwing * 0.5, bodyTop - 2 * sc); ctx.stroke();
+      /* V4：闪白只在「被这一发打中」的 95ms 内出现，且是整只白色剪影。
+         旧版按 battleT 把整排僵尸永久点亮，完全没有单次命中的因果。 */
+      var fl = clamp(z.hitFlash || 0, 0, 1);
+      if (fl > 0 && !s.reducedMotion) {
+        ctx.save();
+        ctx.globalAlpha = fl;
+        ctx.fillStyle = '#ffffff';
+        roundRect(ctx, -5.2 * sc, -23 * sc, 10.4 * sc, 19 * sc, 3.6 * sc); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, -21.5 * sc, 3.5 * sc, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = fl * 0.9;
+        ctx.strokeStyle = '#fde047'; ctx.lineWidth = Math.max(1, 1.4 * sc);
+        roundRect(ctx, -5.2 * sc, -23 * sc, 10.4 * sc, 19 * sc, 3.6 * sc); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+  function drawZLeg(ctx, hx, hy, ls, sc, variant) {
+    ctx.strokeStyle = (variant === 2) ? '#a3b86c' : '#8fa554';
+    ctx.lineWidth = Math.max(1, 2 * sc); ctx.lineCap = 'round';
+    var kneeX = hx + ls * 0.5, kneeY = hy - 4 * sc;
+    var footX = kneeX - ls * 0.3, footY = hy + 0.5 * sc;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY); ctx.stroke();
+  }
+
+  /* ---- S3 集火指示（V3）：尸潮最密点的一条光带 + 准星 ----
+     这是「战斗可操作」的唯一视觉承诺：拖到哪里，火力就往哪里压。
+     颜色随队伍与集火点的距离从蓝变金，玩家不用看数字也知道打没打准。 */
+  function drawFocus(s) {
+    var ctx = R.ctx;
+    /* V4：失败局胜负已定且常已全灭，不再显示集火准星误导玩家。 */
+    if (!ctx || s.phase !== 'S3' || s.focusX == null || s.reducedMotion || s.combatWin === false) return;
+    var fx = clamp(s.focusX, 30, C.LOGICAL_W - 30);
+    var tx = (typeof s.teamX === 'number') ? s.teamX : 240;
+    var on = clamp(1 - Math.abs(tx - fx) / 200, 0, 1);
+    ctx.save();
+    var g = ctx.createLinearGradient(0, 250, 0, 730);
+    g.addColorStop(0, 'rgba(253,224,71,0)');
+    g.addColorStop(0.30, 'rgba(253,224,71,' + (0.07 + 0.13 * on).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(253,224,71,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(fx - 12, 250); ctx.lineTo(fx + 12, 250);
+    ctx.lineTo(fx + 58, 730); ctx.lineTo(fx - 58, 730);
+    ctx.closePath(); ctx.fill();
+
+    /* V4：准星落在尸潮前沿的真实投影 y 上（旧版固定 306，常悬在空地上）。 */
+    var cy = clamp(projectY(clamp(s.horde.z + 0.16, 0.08, 0.66)), 272, 470);
+    ctx.strokeStyle = on > 0.62 ? '#f59e0b' : 'rgba(14,165,233,0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(fx, cy, 19, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(fx - 27, cy); ctx.lineTo(fx - 12, cy);
+    ctx.moveTo(fx + 12, cy); ctx.lineTo(fx + 27, cy);
+    ctx.moveTo(fx, cy - 27); ctx.lineTo(fx, cy - 12);
+    ctx.moveTo(fx, cy + 12); ctx.lineTo(fx, cy + 27);
+    ctx.stroke();
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = on > 0.62 ? 'rgba(245,158,11,0.85)' : 'rgba(14,165,233,0.55)';
+    ctx.beginPath();
+    ctx.arc(fx, cy, 32 + 5 * Math.sin(s.frame * 0.16), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (on > 0.62) {
+      ctx.fillStyle = 'rgba(245,158,11,0.92)';
+      ctx.font = '900 12px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('集火', fx, cy - 44);
+    }
+    ctx.restore();
+  }
+
+  /* ---- L3 Boss（深紫大型 + 旋转光环 + 独立血条 + 登场演出） ---- */
+  function drawBoss(s) {
+    var ctx = R.ctx;
+    if (!ctx || !s.boss) return;
+    var b = s.boss, sc = scaleOf(b.z) * 4.4;
+    var x = projectX(b.u, b.z), y = projectY(b.z);
+    ctx.save();
+    ctx.globalAlpha = b.entrance;
+    /* 落地影：没有影子会像贴纸浮在路面上 */
+    ctx.fillStyle = 'rgba(76,29,149,0.16)';
+    ctx.beginPath(); ctx.ellipse(x, y + 3 * sc, 21 * sc, 5.5 * sc, 0, 0, Math.PI * 2); ctx.fill();
+    var bh = clamp(b.hit || 0, 0, 1);
+    ctx.translate(x + bh * Math.sin(s.frame * 2.7) * 2.8, y - 10 * Math.sin(s.frame * 0.04));
+    ctx.save();
+    ctx.rotate(s.frame * 0.02);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(168,85,247,0.55)';
+    ctx.lineWidth = 3; ctx.setLineDash([16, 12]);
+    ctx.beginPath(); ctx.ellipse(0, -26 * sc, 30 * sc, 10 * sc, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    /* V3 真机复核：旧版 Boss 只是一个紫色胶囊 + 圆头，看起来像一颗药丸。
+       改为「腿 / 收腰躯干 / 手臂 / 肩刺 / 眼窝黄眼 / 獠牙嘴」的丧尸王，
+       并用深紫外描边保证在粉色尸潮与亮天空前仍能读出轮廓。 */
+    var ink = 'rgba(59,7,100,0.55)';
+    ctx.fillStyle = '#6b21a8';
+    roundRect(ctx, -9 * sc, -9 * sc, 8 * sc, 10 * sc, 3 * sc); ctx.fill();
+    roundRect(ctx, 1 * sc, -9 * sc, 8 * sc, 10 * sc, 3 * sc); ctx.fill();
+    var bg = ctx.createLinearGradient(0, -43 * sc, 0, -6 * sc);
+    bg.addColorStop(0, '#f3e8ff'); bg.addColorStop(0.35, '#c084fc'); bg.addColorStop(1, '#7e22ce');
+    ctx.fillStyle = bg; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-16 * sc, -34 * sc);
+    ctx.quadraticCurveTo(-17 * sc, -42 * sc, -10 * sc, -43 * sc);
+    ctx.lineTo(10 * sc, -43 * sc);
+    ctx.quadraticCurveTo(17 * sc, -42 * sc, 16 * sc, -34 * sc);
+    ctx.quadraticCurveTo(13 * sc, -16 * sc, 10 * sc, -6 * sc);
+    ctx.lineTo(-10 * sc, -6 * sc);
+    ctx.quadraticCurveTo(-13 * sc, -16 * sc, -16 * sc, -34 * sc);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f5d0fe';
+    ctx.beginPath(); ctx.moveTo(-16 * sc, -38 * sc); ctx.lineTo(-22 * sc, -51 * sc);
+    ctx.lineTo(-11 * sc, -42 * sc); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(16 * sc, -38 * sc); ctx.lineTo(22 * sc, -51 * sc);
+    ctx.lineTo(11 * sc, -42 * sc); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9333ea';
+    roundRect(ctx, -21 * sc, -34 * sc, 7 * sc, 20 * sc, 3.5 * sc); ctx.fill();
+    roundRect(ctx, 14 * sc, -34 * sc, 7 * sc, 20 * sc, 3.5 * sc); ctx.fill();
+    ctx.fillStyle = '#a855f7'; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -50 * sc, 11 * sc, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#4c1d95';
+    ctx.beginPath(); ctx.arc(-4.2 * sc, -52 * sc, 3.2 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4.2 * sc, -52 * sc, 3.2 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.arc(-4.2 * sc, -52 * sc, 1.8 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4.2 * sc, -52 * sc, 1.8 * sc, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4c1d95';
+    roundRect(ctx, -5.5 * sc, -45 * sc, 11 * sc, 4.5 * sc, 2 * sc); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    for (var t = 0; t < 3; t++) {
+      var tx0 = (-5.5 + 1 + t * 3.4) * sc;
+      ctx.beginPath(); ctx.moveTo(tx0, -45 * sc); ctx.lineTo(tx0 + 1.7 * sc, -45 * sc);
+      ctx.lineTo(tx0 + 0.85 * sc, -42.4 * sc); ctx.closePath(); ctx.fill();
+    }
+    /* V4：Boss 被命中时整体闪白 + 抖动，不再「血条在掉但人毫无反应」。 */
+    if (bh > 0 && !s.reducedMotion) {
+      ctx.globalAlpha = bh * 0.62;
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, -17 * sc, -55 * sc, 34 * sc, 50 * sc, 9 * sc); ctx.fill();
+      ctx.globalAlpha = b.entrance;
+    }
+    ctx.restore();
+
+    var bw = 260, bx = (C.LOGICAL_W - bw) / 2, by = 96;
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    roundRect(ctx, bx - 4, by - 4, bw + 8, 20, 8); ctx.fill();
+    ctx.fillStyle = 'rgba(147,51,234,0.18)';
+    roundRect(ctx, bx, by, bw, 12, 6); ctx.fill();
+    var hp = clamp(b.hpRatio, 0, 1);
+    if (hp > 0) {
+      var hg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      hg.addColorStop(0, '#a855f7'); hg.addColorStop(1, '#ef4444');
+      ctx.fillStyle = hg;
+      roundRect(ctx, bx, by, bw * hp, 12, 6); ctx.fill();
+    }
+    if (b.hit > 0 && hp > 0 && !s.reducedMotion) {
+      ctx.globalAlpha = b.hit * 0.85;
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, bx + bw * hp - 8, by, 8, 12, 3); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = COL.TXT; ctx.font = '700 11px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('BOSS', C.LOGICAL_W / 2, by + 6);
+    ctx.restore();
+  }
+
+  /* ---- L4 特效 / 后处理（V2 明亮主题：source-over 实色，不再依赖 lighter 泛光） ---- */
+  /* ---- V4 真实弹丸层：头亮尾淡、非线性推进、按纵深缩放 ----
+     起点是士兵枪口的 (u,z)，终点是接触帧那只僵尸的 (u,z)。
+     调研：拖尾表达方向而非射程，必须快速消散；白热弹头与碰撞体同尺寸，
+     不能用放大光晕伪造「看起来打中了」。reduced-motion 降级为细线。 */
+  /* 尾细头粗的锥形弹道路径（放在循环外，避免每帧为每发子弹创建闭包）。 */
+  function taperPath(ctx, tx, ty, hx, hy, nx, ny, wT, wH) {
+    ctx.beginPath();
+    ctx.moveTo(tx + nx * wT, ty + ny * wT);
+    ctx.lineTo(hx + nx * wH, hy + ny * wH);
+    ctx.lineTo(hx - nx * wH, hy - ny * wH);
+    ctx.lineTo(tx - nx * wT, ty - ny * wT);
+    ctx.closePath();
+  }
+
+  function drawCombat(s) {
+    var ctx = R.ctx;
+    if (!ctx || s.phase !== 'S3' || !s.bullets || !s.bullets.length) return;
+    var reduced = s.reducedMotion;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (var i = 0; i < s.bullets.length; i++) {
+      var b = s.bullets[i], p = clamp(b.t, 0, 1);
+      var e = 1 - Math.pow(1 - p, 1.45);
+      var u = b.u0 + (b.u1 - b.u0) * e, z = b.z0 + (b.z1 - b.z0) * e;
+      var q = Math.max(0, p - (reduced ? 0.06 : 0.24));
+      var e2 = 1 - Math.pow(1 - q, 1.45);
+      var u2 = b.u0 + (b.u1 - b.u0) * e2, z2 = b.z0 + (b.z1 - b.z0) * e2;
+      var hx = projectX(u, z), hy = projectY(z) - 18 * scaleOf(z);
+      var tx = projectX(u2, z2), ty = projectY(z2) - 18 * scaleOf(z2);
+      var sc = clamp(scaleOf(z), 0.35, 1);
+      if (reduced) {
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+        continue;
+      }
+      /* V4 三次复核：等宽描边在近景像「橙色管子」，还压住自己人。
+         改为尾细头粗的锥形多边形（调研：拖尾要 taper，表达方向而不是射程），
+         并在出生前 8% 行程渐显，避免子弹从枪口「啪」地弹出一根粗棍。 */
+      var vx = hx - tx, vy = hy - ty;
+      var vlen = Math.sqrt(vx * vx + vy * vy) || 1;
+      var nx = -vy / vlen, ny = vx / vlen;
+      var wH = (b.heavy ? 2.9 : 2.1) * sc + 0.5;
+      var wT = 0.28;
+      var birth = clamp((b.t + 0.12) / 0.20, 0, 1);
+      var grad = ctx.createLinearGradient(tx, ty, hx, hy);
+      grad.addColorStop(0, 'rgba(194,65,12,0)');
+      grad.addColorStop(0.45, 'rgba(234,88,12,0.70)');
+      grad.addColorStop(0.86, 'rgba(253,224,71,0.96)');
+      grad.addColorStop(1, 'rgba(255,255,255,1)');
+      ctx.globalAlpha = 0.18 * birth;
+      ctx.fillStyle = '#c2410c';
+      taperPath(ctx, tx, ty, hx, hy, nx, ny, wT, wH * 2.1); ctx.fill();
+      ctx.globalAlpha = 0.96 * birth;
+      ctx.fillStyle = grad;
+      taperPath(ctx, tx, ty, hx, hy, nx, ny, wT, wH); ctx.fill();
+      ctx.globalAlpha = birth;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(hx, hy, (b.heavy ? 2.5 : 1.9) * sc + 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawEffects(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    var reduced = s.reducedMotion;
+    for (var i = 0; i < s.effects.length; i++) {
+      var e = s.effects[i], life = clamp(e.t, 0, 1);
+      var alpha = reduced ? Math.min(1, life * 2) : (1 - life);
+      if (e.kind === 'floatText' || e.kind === 'numberPop') {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '900 ' + (e.kind === 'numberPop' ? 34 : 24) + 'px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+        var yy = reduced ? e.y : e.y - life * 52;
+        /* numberPop 是「本门收益」的即时大数字。亮天空上纯白字几乎看不见，
+           加一层深色胶囊底才能读出来（同一信息用形状+颜色双通道）。 */
+        if (e.kind === 'numberPop') {
+          var tw2 = ctx.measureText(e.text).width;
+          ctx.fillStyle = e.amount < 0 ? 'rgba(136,19,55,0.90)' : 'rgba(2,132,199,0.92)';
+          roundRect(ctx, e.x - tw2 / 2 - 16, yy - 23, tw2 + 32, 46, 23); ctx.fill();
+        } else {
+          ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(15,23,42,0.9)';
+          ctx.strokeText(e.text, e.x, yy);
+        }
+        ctx.fillStyle = e.amount < 0 ? '#fecdd3' : '#ffffff';
+        ctx.fillText(e.text, e.x, yy);
+        ctx.restore();
+      } else if (e.kind === 'particle') {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = e.amount < 0 ? '#e11d48' : '#0284c7';
+        ctx.beginPath(); ctx.arc(e.x, e.y - life * 22, Math.max(1.2, 3.6 * (1 - life)), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (e.kind === 'muzzle') {
+        /* 枪口焰：接触前一阶段的 80ms 星形闪 + 白热芯（头亮、快速消散）。 */
+        var mx = projectX(e.uz, e.zz), my = projectY(e.zz) - 17 * scaleOf(e.zz) * 1.4;
+        var ms = clamp(scaleOf(e.zz) * 1.4, 0.5, 1.6);
+        ctx.save();
+        ctx.globalAlpha = (1 - life) * 0.95;
+        var mr = (6 + 5 * (1 - life)) * ms;
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        for (var msp2 = 0; msp2 < 8; msp2++) {
+          var a2 = msp2 * Math.PI / 4 + (e.seed || 0) * 0.6;
+          var rr = (msp2 % 2 ? 0.40 : 1) * mr;
+          var px2 = mx + Math.cos(a2) * rr, py2 = my + Math.sin(a2) * rr * 0.72;
+          if (msp2 === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(mx, my, 2.2 * ms * (1 - life * 0.45), 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (e.kind === 'impact') {
+        /* 接触帧主阶段：冲击环 + 放射火花 + 1–2 帧白热芯；三级强度。 */
+        var ix = projectX(e.uz, e.zz), iy = projectY(e.zz) - 10 * scaleOf(e.zz);
+        var lvl = e.amount || 1;
+        var zsc = clamp(scaleOf(e.zz) * 1.5, 0.55, 1.45);
+        var rad = (5 + life * (lvl >= 3 ? 34 : (lvl === 2 ? 24 : 16))) * zsc;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = (1 - life) * 0.9;
+        ctx.strokeStyle = lvl >= 3 ? '#f0abfc' : (lvl === 2 ? '#fb923c' : '#fde047');
+        ctx.lineWidth = Math.max(1, (3.4 - 2.6 * life) * (lvl >= 2 ? 1.4 : 1));
+        ctx.beginPath(); ctx.arc(ix, iy, rad, 0, Math.PI * 2); ctx.stroke();
+        var nSp = lvl >= 3 ? 14 : (lvl === 2 ? 10 : 8);
+        for (var s2 = 0; s2 < nSp; s2++) {
+          var ang2 = s2 * (Math.PI * 2 / nSp) + (e.seed || 0) * 5.2;
+          var r0 = rad * 0.32;
+          var r1 = rad * (0.82 + 0.34 * Math.sin(s2 * 2.7 + (e.seed || 0) * 9));
+          ctx.strokeStyle = (s2 % 3 === 0) ? '#ffffff' : (lvl >= 3 ? '#f5d0fe' : '#fde047');
+          ctx.lineWidth = 2 * zsc;
+          ctx.beginPath();
+          ctx.moveTo(ix + Math.cos(ang2) * r0, iy + Math.sin(ang2) * r0);
+          ctx.lineTo(ix + Math.cos(ang2) * r1, iy + Math.sin(ang2) * r1);
+          ctx.stroke();
+        }
+        if (life < 0.32) {
+          ctx.globalAlpha = (0.32 - life) / 0.32;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(ix, iy, (3.6 - life * 5) * zsc, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      } else if (e.kind === 'debris') {
+        /* 击倒碎屑：确定性 8 粒，先上抛后下坠，420ms 内清场。 */
+        var dx = projectX(e.uz, e.zz), dy = projectY(e.zz) - 8 * scaleOf(e.zz);
+        var dsc = clamp(scaleOf(e.zz) * 1.3, 0.5, 1.4);
+        ctx.save();
+        for (var d2 = 0; d2 < 8; d2++) {
+          var da = d2 * Math.PI / 4 + (e.seed || 0) * 3.1;
+          var sp = (10 + (d2 % 3) * 7) * dsc;
+          var px3 = dx + Math.cos(da) * sp * life;
+          var py3 = dy + Math.sin(da) * sp * life * 0.7 - Math.sin(life * Math.PI) * 13 * dsc;
+          ctx.globalAlpha = (1 - life) * 0.82;
+          ctx.fillStyle = d2 % 2 ? '#fb7185' : '#fda4af';
+          ctx.beginPath(); ctx.arc(px3, py3, Math.max(0.8, (2.4 - life * 1.5) * dsc), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      } else if (e.kind === 'gateBurst') {
+        /* V2 穿门光爆：扩散光环 + 放射线 + 增殖粒子（纯视觉，不改数值） */
+        var gx = e.x, gy = e.y, rad = 12 + life * 118;
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.92;
+        ctx.strokeStyle = e.amount < 0 ? '#e11d48' : '#0284c7';
+        ctx.lineWidth = Math.max(1, 7 * (1 - life));
+        ctx.beginPath(); ctx.arc(gx, gy, rad, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = Math.max(1, 3 * (1 - life));
+        for (var k = 0; k < 12; k++) {
+          var ang = k * Math.PI / 6 + life * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(gx + Math.cos(ang) * rad * 0.58, gy + Math.sin(ang) * rad * 0.58);
+          ctx.lineTo(gx + Math.cos(ang) * rad * 0.98, gy + Math.sin(ang) * rad * 0.98);
+          ctx.stroke();
+        }
+        ctx.fillStyle = e.amount < 0 ? '#fb7185' : '#7dd3fc';
+        for (var p = 0; p < 10; p++) {
+          var pa = p * Math.PI / 5 + life;
+          ctx.beginPath();
+          ctx.arc(gx + Math.cos(pa) * rad * 0.8, gy + Math.sin(pa) * rad * 0.8,
+                  Math.max(1, 3.4 * (1 - life)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+    /* V4：旧版第二套「每帧随机 3–6 条假曳光弹」已删除，
+       真实弹道统一由 drawCombat(s) 依据 game-session 的 bullets[] 绘制。 */
+    if (s.post.flash > 0 && !reduced) {
+      ctx.fillStyle = 'rgba(255,255,255,' + s.post.flash.toFixed(3) + ')';
+      ctx.fillRect(0, 0, C.LOGICAL_W, C.LOGICAL_H);
+    }
+    if (s.post.vignette) {
+      /* V2.1：旧版棕褐暗角会把明亮跑道压成灰紫色，改为极淡的蓝色大气感 */
+      var vg = ctx.createRadialGradient(240, 420, 180, 240, 420, 560);
+      vg.addColorStop(0, 'rgba(2,132,199,0)');
+      vg.addColorStop(1, 'rgba(2,132,199,0.055)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, C.LOGICAL_W, C.LOGICAL_H);
+    }
+    if (s.post.alarm > 0.01) {
+      var a = s.post.alarm * (s.combatWin ? 0.045 : 0.085);
+      var ag = ctx.createRadialGradient(240, 420, 180, 240, 420, 520);
+      ag.addColorStop(0, 'rgba(225,29,72,0)');
+      ag.addColorStop(1, 'rgba(225,29,72,' + a.toFixed(3) + ')');
+      ctx.fillStyle = ag; ctx.fillRect(0, 0, C.LOGICAL_W, C.LOGICAL_H);
+    }
+  }
+
+  /* ---- L5 HUD（V2：明亮胶囊卡片 + 大字号，信息层级对标标杆） ---- */
+  function drawHud(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    ctx.save();
+    var hg = ctx.createLinearGradient(0, 0, 0, 148);
+    hg.addColorStop(0, 'rgba(255,255,255,0.82)');
+    hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, C.LOGICAL_W, 148);
+
+    /* 关卡胶囊 */
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    roundRect(ctx, 12, 10, 100, 30, 15); ctx.fill();
+    ctx.fillStyle = COL.TXT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '800 15px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    ctx.fillText(s.hud.levelText, 24, 26);
+
+    /* 我方兵力胶囊（蓝底白字大数字） */
+    ctx.font = '900 25px -apple-system,BlinkMacSystemFont,sans-serif';
+    var pw = Math.min(212, Math.max(126, ctx.measureText(s.hud.powerText).width + 34));
+    ctx.fillStyle = '#0284c7';
+    roundRect(ctx, 12, 48, pw, 46, 14); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 25px -apple-system,BlinkMacSystemFont,sans-serif';
+    ctx.fillText(s.hud.powerText, 24, 67);
+    ctx.font = '700 10px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillText('我方兵力', 24, 85);
+    if (s.isBoss) {
+      ctx.fillStyle = '#9333ea';
+      roundRect(ctx, 20 + pw, 56, 56, 26, 13); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.font = '800 11px sans-serif';
+      ctx.textAlign = 'center'; ctx.fillText('BOSS', 48 + pw, 69);
+      ctx.textAlign = 'left';
+    }
+
+    /* 敌方剩余胶囊（红底白字） */
+    ctx.font = '800 18px -apple-system,BlinkMacSystemFont,sans-serif';
+    var ew = Math.min(158, Math.max(98, ctx.measureText(s.hud.enemyText).width + 34));
+    var ex = C.LOGICAL_W - 12 - ew;
+    ctx.fillStyle = COL.ENEMY;
+    roundRect(ctx, ex, 10, ew, 44, 14); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 10px sans-serif';
+    ctx.fillText('敌方剩余', ex + ew / 2, 22);
+    ctx.font = '800 18px -apple-system,BlinkMacSystemFont,sans-serif';
+    ctx.fillText(s.hud.enemyText, ex + ew / 2, 41);
+
+    /* V3 连击徽章（连击 ≥2 才出现；配合音高递进，形成「别断」的自我驱动） */
+    if (s.combo >= 2) {
+      var cw = 88, chx = 12, chy = 102;
+      ctx.save();
+      var pop = 1 + Math.min(0.16, (s.combo - 1) * 0.02);
+      ctx.translate(chx + cw / 2, chy + 15);
+      ctx.scale(pop, pop);
+      ctx.fillStyle = s.combo >= 6 ? '#f59e0b' : '#0ea5e9';
+      roundRect(ctx, -cw / 2, -15, cw, 30, 15); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 15px -apple-system,BlinkMacSystemFont,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('连击 x' + s.combo, 0, 0);
+      ctx.restore();
+    }
+
+    /* V4 战斗状态：第几波 / 击倒数（纯观测，不参与判定） */
+    if (s.phase === 'S3') {
+      var cw3 = 148, cx3 = C.LOGICAL_W - 12 - cw3, cy3 = 62;
+      ctx.fillStyle = 'rgba(15,23,42,0.80)';
+      roundRect(ctx, cx3, cy3, cw3, 26, 13); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 11px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+      ctx.fillText(s.combatWin ? ('第 ' + (s.battleWave + 1) + '/3 波 · 击倒 ' + s.battleKills)
+                               : '尸潮压上来了',
+                   cx3 + cw3 / 2, cy3 + 13);
+      ctx.textAlign = 'left';
+    }
+
+    /* 底部提示：浅色条 + 深色字 */
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    roundRect(ctx, 34, C.LOGICAL_H - 46, 412, 30, 15); ctx.fill();
+    ctx.fillStyle = COL.TXT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 13px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+    ctx.fillText(s.hud.hintText || '小队伍选加法，大队伍选乘法', 240, C.LOGICAL_H - 31);
+    ctx.restore();
+  }
+
+  /* ---- L6 浮层（V2：明亮预览卡 + 宣传级大标题卡 / 慢动作氛围） ---- */
+  function drawOverlay(s) {
+    var ctx = R.ctx;
+    if (!ctx) return;
+    if (s.phase === 'S1' && s.preview && s.preview.length) {
+      var n = s.preview.length;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.52)';
+      ctx.fillRect(0, 0, C.LOGICAL_W, C.LOGICAL_H);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '900 46px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+      ctx.lineWidth = 8; ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(15,23,42,0.92)';
+      ctx.strokeText('第 ' + s.level + ' 关', 240, 122);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('第 ' + s.level + ' 关', 240, 122);
+      ctx.font = '700 14px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+      ctx.fillStyle = COL.TXT;
+      ctx.fillText('本关门组预览 · 点击或稍候开始', 240, 160);
+
+      /* V3：单关 20–30 组，逐行列表会挤成 15px 高的细条。
+         改为 2 列 × 6 行网格，明确显示前 12 组，并汇总总组数与分段。 */
+      var cols = 2, rows = 6, cellW = 214, cellH = 60, gapX = 8, gapY = 6;
+      var showN = Math.min(n, cols * rows);
+      for (var i = 0; i < showN; i++) {
+        var grp = s.preview[i];
+        var gx0 = 22 + (i % cols) * (cellW + gapX);
+        var gy0 = 186 + Math.floor(i / cols) * (cellH + gapY);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        roundRect(ctx, gx0, gy0, cellW, cellH, 10); ctx.fill();
+        ctx.strokeStyle = 'rgba(15,23,42,0.10)'; ctx.lineWidth = 1;
+        roundRect(ctx, gx0, gy0, cellW, cellH, 10); ctx.stroke();
+        ctx.font = '700 10px sans-serif';
+        ctx.fillStyle = COL.TXT2; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText('第 ' + (i + 1) + ' 组', gx0 + 9, gy0 + 12);
+        var dc = grp.gates.length, cw = (cellW - 18) / dc;
+        for (var j = 0; j < dc; j++) {
+          var g = grp.gates[j];
+          var bx = gx0 + 9 + j * cw, by = gy0 + 23;
+          ctx.fillStyle = g.positive ? 'rgba(14,165,233,0.16)' : 'rgba(225,29,72,0.14)';
+          ctx.strokeStyle = g.positive ? COL.POS : COL.NEG;
+          ctx.lineWidth = 1.6;
+          roundRect(ctx, bx, by, cw - 6, 28, 6); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = g.positive ? '#0369a1' : '#9f1239';
+          ctx.font = '900 12px -apple-system,BlinkMacSystemFont,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(g.label, bx + (cw - 6) / 2, by + 14);
+        }
+      }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 11.5px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif';
+      ctx.fillStyle = COL.TXT2;
+      ctx.fillText(n > showN
+        ? '… 共 ' + n + ' 组门 · 分 3 段推进 · 穿完自动开火'
+        : '共 ' + n + ' 组门 · 分 3 段推进 · 穿完自动开火', 240, 596);
+      ctx.restore();
+    }
+    /* V4：旧版 timeScale 只用来叠一层黄蒙版（没有任何时间缩放），已删除。
+       真正的「收尾慢放」在 game-session 里只对特效老化生效，不动 gameplay 时间。 */
+  }
+
+  function endFrame(s) {
+    if (R.ctx) R.ctx.restore();
+  }
+
+  function draw(state) {
+    if (!R.ctx) return;
+    R.reducedMotion = !!state.reducedMotion;
+    updateFps();
+    var s = buildScene(state);
+    beginFrame(s);
+    drawBackground(s);
+    drawTrack(s);
+    drawRoadside(s);
+    drawCrowdMass(s);          /* V2 远景人海（门之前，作为背景层） */
+    drawHorde(s);
+    drawBoss(s);
+    /* V3 层次修正：门是「必须读到的决策信息」，必须压在队伍之上。
+       旧顺序把队伍画在门后，近景方阵会把门板与数字遮掉一半（截图实证）。
+       先画队伍、再画门与陷阱，保证任何人数下门都完整可见。 */
+    for (var j = 0; j < s.allies.length; j++) drawUnit(s.allies[j], s);
+    drawCombat(s);              /* V4 真实弹丸：在队伍之上、HUD 之下 */
+    for (var i = 0; i < s.gates.length; i++) drawGate(s.gates[i], s);
+    drawTraps(s);
+    drawFocus(s);              /* V3 集火光带 + 准星（S3） */
+    drawEffects(s);
+    drawCrowdBadges(s);        /* V2 人群大数字气泡 */
+    drawHud(s);
+    drawProgress(s);           /* V2 顶部进度条 + 终点旗 */
+    drawOverlay(s);
+    endFrame(s);
+  }
+
+  var Public = {
+    create:function (canvas) {
+      R.canvas = canvas;
+      R.ctx = canvas.getContext('2d', {alpha:false});
+      R.fpsSamples = []; R.lastTierChange = 0; R.lastFrameTime = 0;
+      var dpr = 1;
+      try { dpr = Math.min(window.devicePixelRatio || 1, 2); } catch (e) {}
+      resize(dpr,
+        canvas.parentElement ? canvas.parentElement.clientWidth : 480,
+        canvas.parentElement ? canvas.parentElement.clientHeight : 854);
+      return Public;
+    },
+    resize:resize, draw:draw, setQuality:setQuality, project:project,
+    getQuality:function () { return R.quality; },
+    buildScene:buildScene
+  };
+  return Public;
+
+})(window.__GAME_CORE__);
+</script>
+
+<script id="game-input">
+const InputController = (function () {
+  'use strict';
+  var LOGICAL_W = 480;
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+  /* @param {HTMLCanvasElement} canvas @returns {object} 三端输入统一输出 targetX */
+  function create(canvas) {
+    var api = {
+      targetX:240, locked:false,
+      onConfirm:null, onGesture:null,
+      _keys:{}, _dragging:false
+    };
+    function fireGesture() {
+      if (api.onGesture) { var f = api.onGesture; api.onGesture = null; f(); }
+    }
+    function clientToLogical(clientX) {
+      var rect = canvas.getBoundingClientRect();
+      if (!rect || rect.width <= 0) return LOGICAL_W / 2;
+      return clamp(((clientX - rect.left) / rect.width) * LOGICAL_W, 0, LOGICAL_W);
+    }
+    function setFromPointer(clientX) {
+      if (!api.locked) api.targetX = clientToLogical(clientX);
+    }
+    function startDrag(clientX, pointerId) {
+      fireGesture();
+      api._dragging = true;
+      setFromPointer(clientX);
+      if (pointerId !== undefined && canvas.setPointerCapture) {
+        try { canvas.setPointerCapture(pointerId); } catch (e) {}
+      }
+    }
+    function endDrag() { api._dragging = false; }
+
+    var hasPointer = false;
+    try { hasPointer = (typeof window.PointerEvent !== 'undefined'); } catch (e) {}
+    if (hasPointer) {
+      canvas.addEventListener('pointerdown', function (e) { startDrag(e.clientX, e.pointerId); }, false);
+      canvas.addEventListener('pointermove', function (e) { if (api._dragging) setFromPointer(e.clientX); }, false);
+      canvas.addEventListener('pointerup', endDrag, false);
+      canvas.addEventListener('pointercancel', endDrag, false);
+      canvas.addEventListener('lostpointercapture', endDrag, false);
+    } else {
+      canvas.addEventListener('mousedown', function (e) { startDrag(e.clientX); }, false);
+      canvas.addEventListener('mousemove', function (e) { if (api._dragging) setFromPointer(e.clientX); }, false);
+      window.addEventListener('mouseup', endDrag, false);
+      canvas.addEventListener('touchstart', function (e) {
+        if (e.touches.length) startDrag(e.touches[0].clientX);
+        if (e.cancelable) e.preventDefault();
+      }, {passive:false});
+      canvas.addEventListener('touchmove', function (e) {
+        if (api._dragging && e.touches.length) setFromPointer(e.touches[0].clientX);
+        if (e.cancelable) e.preventDefault();
+      }, {passive:false});
+      canvas.addEventListener('touchend', endDrag, false);
+    }
+
+    function onKeyDown(e) {
+      var k = e.key, lk = String(k).toLowerCase();
+      if (lk === 'a' || lk === 'd' || k === 'ArrowLeft' || k === 'ArrowRight') {
+        fireGesture();
+        api._keys[lk === 'arrowleft' ? 'arrowleft' : (lk === 'arrowright' ? 'arrowright' : lk)] = true;
+        if (k === 'ArrowLeft' || k === 'ArrowRight') { if (e.cancelable) e.preventDefault(); }
+      } else if (k === ' ' || k === 'Enter' || k === 'Spacebar') {
+        fireGesture();
+        if (api.onConfirm) api.onConfirm();
+      }
+    }
+    function onKeyUp(e) {
+      var lk = String(e.key).toLowerCase();
+      api._keys[lk] = false;
+    }
+    window.addEventListener('keydown', onKeyDown, false);
+    window.addEventListener('keyup', onKeyUp, false);
+
+    /* 键盘按住连续移动，在帧循环内积分 */
+    api.tickKey = function (dt) {
+      if (api.locked) return;
+      var step = 360 * (dt / 1000);
+      var left = api._keys['a'] || api._keys['arrowleft'];
+      var right = api._keys['d'] || api._keys['arrowright'];
+      if (left && !right) api.targetX = clamp(api.targetX - step, 0, LOGICAL_W);
+      else if (right && !left) api.targetX = clamp(api.targetX + step, 0, LOGICAL_W);
+    };
+    api.attach = function () { return api; };
+    api.setLocked = function (b) { api.locked = !!b; };
+    api.setTargetX = function (x) { if (!api.locked) api.targetX = clamp(x, 0, LOGICAL_W); };
+    return api;
+  }
+  return {create:create};
+
+})();
+</script>
+
+<script id="game-session">
+const GameSession = (function (Core) {
+  'use strict';
+  var C = Core.CONSTANTS;
+  /* V3 节奏重构：门组间隔从 1900ms 收紧到 1400ms（单次决策更紧凑、跑动更连贯），
+     同时组数从 3–6 扩到 20–30，单关净时长从 9–14.7 秒提升到 40–58 秒。
+     行业基准：数字门品类单次 run 60–90 秒；通用 hyper-casual 单关 15–45 秒；
+     9-pixels 对 40 款榜单产品的统计指出「10 秒关太浅，建立不了情绪投入」。 */
+  var GROUP_LEAD = 2100, GROUP_INTERVAL = 1400, TRAVEL = 1150, GROUP_TAIL = 1800;
+  var TEAM_Z = 0.92;
+  /* V4 战斗表现层常量（纯数值，不触碰 Core / 判定 / 时长）。
+     ALLY_PLANE_Z 与 game-render 的 TEAM_Z 一致：弹丸必须从可见枪口出发。 */
+  var ALLY_PLANE_Z = 0.86, FIRE_INTERVAL = 84, FX_SLOW_SCALE = 0.35;
+  var BEST_KEY = 'hgz.best';
+  var memBest = null;
+
+  var S = {
+    phase:'HOME', level:1, level_:null,
+    power:0n, displayPower:0n, entryPower:0n, enemyPower:0n,
+    battleP0:0n, battleZ0:0n,
+    isBoss:false, teamX:240, frameCount:0,
+    phaseTrace:[], phaseTraceHistory:[],
+    gateChoices:[], lastGateResult:null, outcome:null,
+    inputLocked:false, paused:false,
+    tS1:0, tS2:0, tS3:0, tS4:0,
+    s2GroupIndex:0, effects:[], gates:[], traps:[],
+    bestLevel:1, muted:false, reducedMotion:false,
+    hintText:'', bossEntrance:1, battleT:0,
+    /* V3：手感与评分 */
+    combo:0, bestCombo:0, hitstop:0,
+    focusSum:0, focusN:0, focusScore:0, focusX:240, battleWave:0, focusSampleAt:0,
+    grade:'', sector:0,
+    /* V4 战斗表现层：全部为只读可推导的表现状态，绝不参与胜负 / 兵力 / 下一关 */
+    bullets:[], zSlots:[], zState:[], fireSlots:[],
+    fireAcc:0, fireSeq:0, unitCount:0, hordeN:0,
+    battleShots:0, battleHits:0, battleKills:0,
+    lastFireAudioAt:-999, lastHitAudioAt:-999, lastKillAudioAt:-999,
+    bossHitT:0, fxSlowT:0, finishAdded:false,
+    shakeCooldown:0, hitstopCooldown:0,
+    deps:null
+  };
+
+  function el(id) { return document.getElementById(id); }
+  function show(id) { var e = el(id); if (e) e.classList.remove('hidden'); }
+  function hide(id) { var e = el(id); if (e) e.classList.add('hidden'); }
+  function hideAllOverlays() {
+    hide('overlay-home'); hide('overlay-win'); hide('overlay-lose'); hide('overlay-help');
+  }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function laneCenterX(lane, doorCount) { return (lane + 0.5) * (C.LOGICAL_W / doorCount); }
+
+  function loadBest() {
+    if (memBest !== null) return memBest;
+    try {
+      var v = window.localStorage.getItem(BEST_KEY);
+      var n = parseInt(v || '1', 10);
+      return (isFinite(n) && n >= 1) ? n : 1;
+    } catch (e) { return 1; }
+  }
+  function saveBest(n) {
+    memBest = n;
+    try { window.localStorage.setItem(BEST_KEY, String(n)); } catch (e) { /* 内存态 */ }
+  }
+
+  /* 兵力 → 绘制单位数：全程字符串口径，绝不 Number(大 bigint) */
+  function unitCountFromPower(p) {
+    var s = p.toString();
+    if (s.length <= 3) return Number(p);
+    return Math.min(C.MAX_DRAW_UNITS, 40 + (s.length - 3) * 7);
+  }
+  function hordeCountFor(level, phase, battleT) {
+    if (phase === 'S4') return 0;
+    var base = Math.min(120, 26 + level * 3);
+    /* V4：S3 用恒定编制，靠「被命中 → 击倒」逐个减员，不再按 battleT 凭空抹掉一整片尸潮。
+       这样命中、击倒数、HUD 敌方剩余三者在时间上才对得上；失败时没有击倒，尸潮保持满编前压。 */
+    if (phase === 'S3') return Math.min(60, S.hordeN || base);
+    return Math.min(120, 18 + level * 2);
+  }
+
+  /* ==================== V4 确定性弹道 / 命中模拟 ====================
+     调研依据见 docs/V4-AUDIT.md §0。核心原则：
+       ① 反馈必须落在「接触帧」——闪白、火花、击退、音效在同一帧对齐（Hades 案例）；
+       ② 三阶段时序：枪口焰(80ms) → 头亮尾淡的非线性拖尾 → 命中主阶段(200–300ms) → 快速消散；
+       ③ 动态范围：普通命中不震屏不顿帧；重击 / Boss 才叠加，且带冷却；
+       ④ 击倒节奏受战斗进度约束，画面与 HUD 敌方剩余同步；胜负分叉。
+     本段全部位于 game-session：纯数值，不出现 ctx.*（U-9），不引入 Math.random，
+     不改变 power / outcome / 下一关起始值。 */
+  var ZTINTS = ['#f9a8d4', '#fb7185', '#f43f5e', '#e11d48', '#e879f9', '#c084fc'];
+
+  function zombieSlots(hc, frame, bt, focusX, phase, win) {
+    var out = [], zRows = Math.max(1, Math.ceil(hc / 12));
+    /* 失败时尸潮向镜头推进得更快、更深：0.10→0.44，胜利只到 0.28。 */
+    var base = phase === 'S3' ? (0.10 + (win === false ? 0.34 : 0.18) * bt) : 0.13;
+    var span = phase === 'S3' ? (win === false ? 0.54 : 0.62) : 0.22;
+    var fu = (typeof focusX === 'number') ? (focusX - 240) / 240 : 0;
+    for (var k = 0; k < hc; k++) {
+      var zc = k % 12, zr = Math.floor(k / 12);
+      var zuBase = ((zc - 5.5) / 6) * 0.94 + 0.035 * Math.sin(frame * 0.02 + k);
+      var zu = phase === 'S3' ? clamp(zuBase * 0.56 + fu * 0.60, -0.96, 0.96) : zuBase;
+      var zz = clamp(base + (zr / zRows) * span + 0.02 * Math.sin(frame * 0.03 + k), 0.05, 0.80);
+      out.push({idx:k, u:zu, z:zz, phase:frame * 0.15 + k * 0.5,
+                tint:ZTINTS[Math.min(ZTINTS.length - 1, zr)],
+                stagger:0.12 * Math.sin(frame * 0.08 + k * 1.7), row:zr});
+    }
+    out.sort(function (a, b) { return a.z - b.z; });
+    return out;
+  }
+
+  /* 与 game-render buildScene 的 ally 布局同一套公式，保证弹丸起点落在可见枪口。 */
+  function allySlot(idx, uc) {
+    var AC = 10, col = idx % AC, row = Math.floor(idx / AC);
+    var aRows = Math.max(1, Math.ceil(uc / AC));
+    var spread = Math.min(1, uc / 48);
+    var width = (0.18 + 0.14 * spread) * (1 - 0.55 * (row / aRows));
+    var ux = ((col - (AC - 1) / 2) / ((AC - 1) / 2)) * width
+             + 0.010 * Math.sin(idx * 12.9898) + (row % 2 ? 0.012 : -0.012);
+    var uz = ALLY_PLANE_Z - row * 0.030;
+    if (uz < 0.52) uz = 0.52;
+    return {u:clamp((S.teamX - 240) / 240, -1, 1) + ux, z:uz};
+  }
+  function findSlot(idx) {
+    for (var i = 0; i < S.zSlots.length; i++) if (S.zSlots[i].idx === idx) return S.zSlots[i];
+    return null;
+  }
+
+  function resetCombat() {
+    S.bullets = []; S.zSlots = []; S.zState = []; S.fireSlots = [];
+    S.fireAcc = 0; S.fireSeq = 0;
+    S.battleShots = 0; S.battleHits = 0; S.battleKills = 0;
+    S.lastFireAudioAt = -999; S.lastHitAudioAt = -999; S.lastKillAudioAt = -999;
+    S.bossHitT = 0; S.fxSlowT = 0; S.finishAdded = false;
+    S.shakeCooldown = 0; S.hitstopCooldown = 0;
+    S.hordeN = Math.min(56, 30 + Math.min(26, Math.floor((S.level - 1) / 2) * 2));
+    for (var i = 0; i < S.hordeN; i++) {
+      S.zState.push({flash:0, knock:0, dead:0, hits:0});
+      S.fireSlots.push(0);
+    }
+  }
+
+  function spawnVolley() {
+    var seq = S.fireSeq++;
+    var rng = Core.makeRng(((seq * 2654435761) ^ (S.level * 40503) ^ 0x9e3779b9) >>> 0);
+    /* V4 二次分析：真机失败局（兵力被打到 0）出现过「一个蓝兵都没有却仍在开火」。
+       射手数必须真实来自当前兵力，全灭即停火；兵力衰减时齐射规模同步递减。 */
+    var shooters = Math.min(10, S.unitCount);
+    if (shooters <= 0) return;
+    /* 目标优先落在「集火点附近」的存活僵尸，取前 14 个再确定性轮转，
+       所以拖队伍去 focusX 真的会改变弹着点分布，而不是只改一个评分数字。 */
+    var fu = (S.focusX - 240) / 240, alive = [];
+    for (var i = 0; i < S.zSlots.length; i++) {
+      var st = S.zState[S.zSlots[i].idx];
+      if (st && st.dead === 0) alive.push(S.zSlots[i]);
+    }
+    alive.sort(function (a, b) { return Math.abs(a.u - fu) - Math.abs(b.u - fu) || a.idx - b.idx; });
+    var pool = alive.slice(0, 14);
+    /* V4 二次分析：真机上 5–7 发在途太稀，弹道在白跑道上读不出来。
+       提到每拍 3 发（每 5 拍 4 发）、间隔 84ms → 稳态 9–11 发在途，仍在性能预算内。 */
+    var n = shooters < 3 ? 1 : (shooters < 6 ? 2 : ((seq % 5 === 0) ? 4 : 3));
+    for (var b = 0; b < n; b++) {
+      var shooter = (seq * 3 + b * 4) % shooters;
+      var from = allySlot(shooter, S.unitCount);
+      var to, targetIdx = -1, isBoss = false;
+      if (S.isBoss && (seq + b) % 4 === 0) {
+        to = {u:0, z:0.26}; isBoss = true;
+      } else if (pool.length) {
+        var pick = pool[(seq * 5 + b * 3) % pool.length];
+        to = {u:pick.u, z:pick.z}; targetIdx = pick.idx;
+      } else {
+        to = {u:fu, z:0.30};
+      }
+      var heavy = (seq % 7 === 0) && (b === 0);
+      S.bullets.push({
+        u0:from.u, z0:from.z, u1:to.u + (rng() - 0.5) * 0.05, z1:to.z,
+        /* 调研：多单位齐射必须错峰 30–80ms，否则「一整排同时闪一下」。
+           这里让同一拍的每发起点错开约 12% 飞行时间（≈27ms），命中也自然错开。 */
+        t:-b * 0.12, ttl:(heavy ? 190 : 220) + rng() * 60,
+        heavy:heavy, boss:isBoss, targetIdx:targetIdx, seed:rng()
+      });
+      S.battleShots++;
+      if (shooter < S.fireSlots.length) S.fireSlots[shooter] = 1 - b * 0.14;
+      if (!S.reducedMotion) {
+        addEffect({kind:'muzzle', x:0, y:0, z:from.z, uz:from.u, zz:from.z,
+                   text:'', amount:0, t:0, ttl:80, age:0, seed:rng()});
+      }
+    }
+    if (S.deps && S.deps.audio && (S.tS3 - S.lastFireAudioAt > 105)) {
+      S.lastFireAudioAt = S.tS3;
+      S.deps.audio.play('fire', {pitch:seq % 4});
+    }
+    if (S.bullets.length > 54) S.bullets.splice(0, S.bullets.length - 54);
+  }
+
+  /* 接触帧：所有反馈在同一帧、同一坐标触发（调研结论：同步比数量更重要）。 */
+  function onImpact(bx) {
+    var uz = bx.u1, zz = bx.z1;
+    if (bx.targetIdx >= 0) {
+      var slot = findSlot(bx.targetIdx);
+      if (slot) { uz = slot.u; zz = slot.z; }
+      var st = S.zState[bx.targetIdx];
+      /* 二次分析：溶解中的僵尸（0 < dead < 1）不能再被击倒，
+         否则同一只会被重复计数（真机首轮出现 kills=31 / slots=30 的矛盾）。 */
+      if (st && st.dead === 0) {
+        st.flash = 1; st.knock = 1; st.hits++;
+        /* 击倒预算随战斗进度略领先放开：不许开局 1 秒清空全场，
+           也要保证战斗结束前尸潮确实清空（HUD 归零不能还站着一排人）。
+           失败时预算恒为负 → 不产生击倒。 */
+        var budget = S.outcome.win
+          ? Math.min(S.hordeN, Math.floor(S.hordeN * Math.min(1, S.battleT * 1.18)))
+          : -1;
+        if (st.hits >= 2 && S.battleKills < budget) {
+          st.dead = 0.001; S.battleKills++;
+          if (!S.reducedMotion) {
+            /* 死亡反馈必须明显强于普通命中：额外一层 lvl2 冲击环 + 碎屑。 */
+            addEffect({kind:'impact', x:0, y:0, z:zz, uz:uz, zz:zz, text:'',
+                       amount:2, t:0, ttl:280, age:0, seed:bx.seed + 0.31});
+            addEffect({kind:'debris', x:0, y:0, z:zz, uz:uz, zz:zz, text:'',
+                       amount:1, t:0, ttl:420, age:0, seed:bx.seed});
+            if (S.deps && S.deps.audio && S.tS3 - S.lastKillAudioAt > 130) {
+              S.lastKillAudioAt = S.tS3;
+              S.deps.audio.play('zombie.down');
+            }
+          }
+        }
+      }
+    }
+    S.battleHits++;
+    if (!S.reducedMotion) {
+      addEffect({kind:'impact', x:0, y:0, z:zz, uz:uz, zz:zz, text:'',
+                 amount:bx.boss ? 3 : (bx.heavy ? 2 : 1), t:0,
+                 ttl:bx.boss ? 300 : (bx.heavy ? 260 : 200), age:0, seed:bx.seed});
+    }
+    if (bx.boss) {
+      S.bossHitT = 1;
+      if (S.deps && S.deps.audio && S.tS3 - S.lastHitAudioAt > 120) {
+        S.lastHitAudioAt = S.tS3;
+        S.deps.audio.play('boss.hit');
+      }
+    } else if (S.deps && S.deps.audio && S.tS3 - S.lastHitAudioAt > 78) {
+      S.lastHitAudioAt = S.tS3;
+      S.deps.audio.play('bullet.hit');
+    }
+    /* 动态范围：只有重击 / Boss 命中才允许震动与微顿帧，且带冷却。
+       调研明确要求「连击不能变幻灯片」：约 10 发/秒，冷却 620ms → 每秒最多 1–2 次。 */
+    if (!S.reducedMotion && (bx.heavy || bx.boss) && S.shakeCooldown <= 0) {
+      S.shakeCooldown = bx.boss ? 320 : 620;
+      addEffect({kind:'shake', x:0, y:0, z:0, text:'',
+                 amount:bx.boss ? 8 : 5, t:0, ttl:200, age:0});
+      if (S.hitstopCooldown <= 0) {
+        S.hitstop = Math.max(S.hitstop, bx.boss ? 60 : 45);
+        S.hitstopCooldown = 620;
+      }
+    }
+  }
+
+  function tickCombat(dt) {
+    /* 槽位每帧按当前 frame / battleT / focusX 重算，弹丸到达时取的是「当前位置」，
+       接触点永远落在那只僵尸身上，而不是 230ms 前的旧坐标。 */
+    S.zSlots = zombieSlots(S.hordeN, S.frameCount, S.battleT, S.focusX, 'S3', S.outcome.win);
+    for (var i = 0; i < S.zState.length; i++) {
+      var st = S.zState[i];
+      st.flash = Math.max(0, st.flash - dt / 80);
+      st.knock = Math.max(0, st.knock - dt / 190);
+      if (st.dead > 0 && st.dead < 1) st.dead = Math.min(1, st.dead + dt / 520);
+    }
+    S.bossHitT = Math.max(0, S.bossHitT - dt / 130);
+    S.shakeCooldown = Math.max(0, S.shakeCooldown - dt);
+    S.hitstopCooldown = Math.max(0, S.hitstopCooldown - dt);
+    if (S.fxSlowT > 0) S.fxSlowT = Math.max(0, S.fxSlowT - dt);
+    for (var f = 0; f < S.fireSlots.length; f++) {
+      if (S.fireSlots[f] > 0) S.fireSlots[f] = Math.max(0, S.fireSlots[f] - dt / 90);
+    }
+    S.fireAcc += dt;
+    var guard = 0;
+    while (S.fireAcc >= FIRE_INTERVAL && guard < 4) {
+      S.fireAcc -= FIRE_INTERVAL; guard++;
+      spawnVolley();
+    }
+    for (var k = S.bullets.length - 1; k >= 0; k--) {
+      var b = S.bullets[k];
+      b.t += dt / b.ttl;
+      if (b.t >= 1) { onImpact(b); S.bullets.splice(k, 1); }
+    }
+  }
+  function addEffect(e) { S.effects.push(e); }
+  function tickEffects(dt) {
+    for (var i = S.effects.length - 1; i >= 0; i--) {
+      var e = S.effects[i];
+      e.age += dt;
+      e.t = clamp(e.age / e.ttl, 0, 1);
+      if (e.age >= e.ttl) S.effects.splice(i, 1);
+    }
+    if (S.effects.length > 180) S.effects.splice(0, S.effects.length - 180);
+  }
+  function pushPhase(p) {
+    S.phase = p;
+    S.phaseTrace.push(p);
+  }
+  function recordHistory() {
+    S.phaseTraceHistory.push({level:S.level, trace:S.phaseTrace.slice()});
+    if (S.phaseTraceHistory.length > 48) S.phaseTraceHistory.shift();
+  }
+
+  /* 进入任意关卡的唯一入口：首次 / 下一关 / 失败重试，一律规范化为 P0(n) */
+  function enterLevel(n) {
+    var L = Core.generateLevel(n);
+    S.level = n;
+    S.level_ = L;
+    S.power = L.entryPower;
+    S.displayPower = L.entryPower;
+    S.entryPower = L.entryPower;
+    S.enemyPower = L.enemyPower;
+    S.battleP0 = L.entryPower;
+    S.battleZ0 = L.enemyPower;
+    S.isBoss = L.isBoss;
+    S.teamX = 240;
+    S.frameCount = 0;
+    S.phaseTrace = [];
+    S.gateChoices = [];
+    S.lastGateResult = null;
+    S.outcome = null;
+    S.inputLocked = false;
+    S.tS1 = 0; S.tS2 = 0; S.tS3 = 0; S.tS4 = 0;
+    S.s2GroupIndex = 0;
+    S.effects = [];
+    S.gates = []; S.traps = [];
+    S.bossEntrance = 1;
+    S.battleT = 0;
+    S.combo = 0; S.bestCombo = 0; S.hitstop = 0; S.shakeBoost = 0;
+    S.focusSum = 0; S.focusN = 0; S.focusScore = 0; S.focusX = 240;
+    S.battleWave = 0; S.focusSampleAt = 0; S.grade = ''; S.sector = 0;
+    resetCombat();
+    S.hintText = n === 1 ? '按住左右滑动，对准蓝色正门' : '小队伍选加法，大队伍选乘法';
+    if (S.deps && S.deps.input) {
+      S.deps.input.setTargetX(240);
+      S.deps.input.setLocked(false);
+    }
+    if (S.deps && S.deps.audio) S.deps.audio.setIntensity('normal');
+    hideAllOverlays();
+    pushPhase('S1');
+  }
+
+  /* 只读调试快照：跨 window.__* 边界 bigint 一律十进制字符串 */
+  function buildDebugSnapshot() {
+    var L = S.level_;
+    var gates = L ? L.groups.map(function (grp) {
+      return {
+        index:grp.index, doorCount:grp.doorCount,
+        gates:grp.gates.map(function (g, j) {
+          /* trapped 为只读事实位：S.traps 只保留渲染窗口内的陷阱，
+             因此 QA 无法从 traps 反推全程踩坑情况，必须随门一起下发。 */
+          return {id:g.id, op:g.op, value:Core.bigintToDecimal(g.value),
+                  label:g.label, positive:g.positive, lane:g.lane,
+                  trapped:!!(grp.traps && grp.traps[j])};
+        })
+      };
+    }) : [];
+    var out = S.outcome ? {
+      win:S.outcome.win,
+      powerBefore:Core.bigintToDecimal(S.outcome.powerBefore),
+      enemyPower:Core.bigintToDecimal(S.outcome.enemyPower),
+      powerAfter:Core.bigintToDecimal(S.outcome.powerAfter),
+      loss:Core.bigintToDecimal(S.outcome.loss),
+      rollbackPower:Core.bigintToDecimal(S.outcome.rollbackPower),
+      durationMs:S.outcome.durationMs, frames:S.outcome.frames, reason:S.outcome.reason
+    } : null;
+    var lgr = S.lastGateResult ? {
+      before:Core.bigintToDecimal(S.lastGateResult.before),
+      power:Core.bigintToDecimal(S.lastGateResult.power),
+      delta:Core.bigintToDecimal(S.lastGateResult.delta),
+      op:S.lastGateResult.op,
+      value:Core.bigintToDecimal(S.lastGateResult.value),
+      label:S.lastGateResult.label
+    } : null;
+    /* 只读位置反馈：QA 键盘闭环控制依赖（裁决 A-3，不新增 Core API / 全局） */
+    var inp = (S.deps && S.deps.input) ? S.deps.input : null;
+    var targetX = (inp && typeof inp.targetX === 'number')
+      ? clamp(inp.targetX, 0, C.LOGICAL_W) : clamp(S.teamX, 0, C.LOGICAL_W);
+    var activeGroup = clamp(S.s2GroupIndex, 0, L ? L.groups.length - 1 : 0);
+    var grpNow = L ? L.groups[activeGroup] : null;
+    var dcNow = grpNow ? grpNow.doorCount : 2;
+    var currentLane = clamp(Math.floor(targetX / (C.LOGICAL_W / dcNow)), 0, dcNow - 1);
+    return Object.freeze({
+      level:S.level, phase:S.phase,
+      targetX:targetX, currentLane:currentLane, activeGroup:activeGroup,
+      power:Core.bigintToDecimal(S.power),
+      displayPower:Core.bigintToDecimal(S.displayPower),
+      enemyPower:Core.bigintToDecimal(L ? L.enemyPower : S.enemyPower),
+      gates:gates,
+      /* V3 只读：每组的最优门下标，QA 用它稳定通关（不含随机性，不参与判定） */
+      bestPath:L ? Core.bestPath(L).path.slice() : [],
+      lastGateResult:lgr,
+      gateChoices:S.gateChoices.slice(),
+      outcome:out,
+      frameCount:S.frameCount,
+      phaseTrace:S.phaseTrace.slice(),
+      phaseTraceHistory:S.phaseTraceHistory.map(function (h) {
+        return {level:h.level, trace:h.trace.slice()};
+      }),
+      paused:S.paused, inputLocked:S.inputLocked,
+      entryPower:Core.bigintToDecimal(S.entryPower),
+      isBoss:S.isBoss, bestLevel:S.bestLevel, muted:S.muted,
+      traps:S.traps.slice(),
+      /* V3 只读观测字段：QA 用它核对单关时长、战斗波次、评级（不参与判定） */
+      tS1:Math.round(S.tS1), tS2:Math.round(S.tS2), tS3:Math.round(S.tS3),
+      combo:S.combo, bestCombo:S.bestCombo, grade:S.grade,
+      focusScore:S.focusScore, focusX:S.focusX, battleWave:S.battleWave,
+      sector:S.sector, groupCount:L ? L.groups.length : 0,
+      battleMs:L && S.outcome ? S.outcome.durationMs : 0,
+      /* V4 只读战场观测：QA 用它确认「子弹真的命中了僵尸」而非随机撒点 */
+      combat:{
+        shots:S.battleShots, hits:S.battleHits, kills:S.battleKills,
+        bullets:S.bullets.length, slots:S.hordeN,
+        alive:(function () { var n = 0; for (var i = 0; i < S.zState.length; i++) if (S.zState[i].dead === 0) n++; return n; })(),
+        bossHit:S.bossHitT
+      }
+    });
+  }
+
+  function showWin() {
+    var e = S.outcome;
+    var gain = S.power - S.entryPower;
+    var t = el('win-title'), g = el('win-gain'), l = el('win-left'), b = el('win-best');
+    if (t) t.textContent = '第 ' + S.level + ' 关 · 清空';
+    if (g) g.textContent = (gain >= 0n ? '+' : '') + Core.formatNumber(gain);
+    if (l) l.textContent = Core.formatNumber(e.powerAfter);
+    if (b) b.textContent = String(S.bestLevel);
+    var cb = el('win-combo');
+    if (cb) cb.textContent = 'x' + S.bestCombo;
+    var gr = el('win-grade'), gn = el('win-grade-note');
+    if (gr) {
+      gr.textContent = S.grade || 'B';
+      gr.className = 'grade-badge g-' + (S.grade || 'B');
+    }
+    if (gn) {
+      gn.innerHTML = '集火 <b>' + Math.round(S.focusScore * 100) + '%</b>' +
+                     ' · 命中 <b>' + S.battleHits + '</b> 发' +
+                     ' · 击倒 <b>' + S.battleKills + '</b>';
+    }
+    show('overlay-win');
+  }
+  function showLose() { show('overlay-lose'); }
+
+  function startS2() {
+    if (S.phase !== 'S1') return;
+    pushPhase('S2');
+    S.tS2 = 0;
+    S.s2GroupIndex = 0;
+    S.inputLocked = false;
+    if (S.deps && S.deps.input) S.deps.input.setLocked(false);
+    S.hintText = (S.level === 1) ? '按住左右滑动，对准蓝色正门' : '小队伍选加法，大队伍选乘法';
+  }
+
+  /* 离散事件：以队伍中心 x 落在哪个 [0,480] 等分 lane 为准，整队统一生效一次 */
+  function resolveGroup(i) {
+    var grp = S.level_.groups[i], dc = grp.doorCount;
+    var lane = clamp(Math.floor(S.teamX / (C.LOGICAL_W / dc)), 0, dc - 1);
+    var gate = grp.gates[lane];
+    var r = Core.applyGate(S.power, gate);
+    var trapped = !!(grp.traps && grp.traps[lane]);
+    var beforeTrap = r.power;
+    if (trapped) {
+      var lossT = (r.power * C.TRAP_NUM) / C.TRAP_DEN;
+      if (lossT < 1n) lossT = 1n;
+      r = {before:beforeTrap, power:r.power - lossT, delta:r.delta, op:r.op, value:r.value, label:r.label, trapped:true};
+    }
+    S.power = r.power;
+    S.displayPower = r.power;
+    S.lastGateResult = r;
+    S.gateChoices.push(lane);
+    S.sector = grp.sector || 0;
+
+    /* V3 连击与手感：连续拿到「正门且未踩陷阱」才累计连击。
+       调研依据（Juice / game-feel 清单）：连续同质事件用「音高递进」回报，
+       同时在重击（大倍率/陷阱）插入 40–80ms hitstop 才有重量感；
+       反馈强度必须有动态范围——如果每一门都震得一样，就再没有门值得震。 */
+    var gained = (r.delta > 0n) && gate.positive && !trapped;
+    if (gained) S.combo++; else S.combo = 0;
+    if (S.combo > S.bestCombo) S.bestCombo = S.combo;
+    var heavy = (gate.op === 'mul' && gate.value >= 3n);
+    if (S.deps && S.deps.audio) {
+      S.deps.audio.play(trapped ? 'trap.hit' : (gate.positive ? 'gate.positive' : 'gate.negative'),
+                        {pitch:Math.min(9, S.combo)});
+    }
+    if (!S.reducedMotion) {
+      S.hitstop = Math.max(S.hitstop, trapped ? 85 : (heavy ? 70 : 38));
+    }
+    var cx = laneCenterX(lane, dc);
+    var sign = r.delta >= 0n ? 1 : -1;
+    addEffect({kind:'floatText', x:cx, y:600, z:TEAM_Z, text:r.label,
+               amount:sign, t:0, ttl:900, age:0});
+    if (S.combo >= 3) {
+      addEffect({kind:'floatText', x:cx, y:470, z:TEAM_Z, text:'连击 x' + S.combo,
+                 amount:1, t:0, ttl:760, age:0});
+    }
+    if (trapped) {
+      var loss = beforeTrap - r.power;
+      addEffect({kind:'floatText', x:cx, y:560, z:TEAM_Z, text:'陷阱 -' + Core.formatNumber(loss),
+                 amount:-1, t:0, ttl:1000, age:0});
+    }
+    addEffect({kind:'numberPop', x:240, y:196, z:1,
+               text:(r.delta >= 0n ? '+' : '') + Core.formatNumber(r.delta),
+               amount:sign, t:0, ttl:720, age:0});
+    /* V2 穿门光爆：驱动人群增殖脉冲（纯视觉，不参与胜负/数值） */
+    if (!S.reducedMotion) {
+      addEffect({kind:'gateBurst', x:cx, y:600, z:TEAM_Z,
+                 text:'', amount:sign, t:0, ttl:560, age:0});
+    }
+    var rng = Core.makeRng(((S.frameCount * 104729) ^ (S.level * 31) ^ i) >>> 0);
+    var count = S.reducedMotion ? 5 : (heavy ? 30 : 20);
+    for (var k = 0; k < count; k++) {
+      addEffect({kind:'particle', x:cx + (rng() - 0.5) * 110, y:640, z:TEAM_Z,
+                 text:'', amount:sign, t:0, ttl:520 + rng() * 300, age:0});
+    }
+    if (!S.reducedMotion) {
+      addEffect({kind:'flash', x:0, y:0, z:0, text:'', amount:trapped ? 0.16 : (heavy ? 0.12 : 0.07),
+                 t:0, ttl:trapped ? 170 : 130, age:0});
+      /* 震动强度分级：轻门 2px / 普通 4px / 大倍率 7px / 陷阱 9px（调研：轻击 2–5、重击 8–15） */
+      addEffect({kind:'shake', x:0, y:0, z:0, text:'',
+                 amount:trapped ? 9 : (heavy ? 7 : (gate.positive ? 4 : 2)),
+                 t:0, ttl:trapped ? 220 : 170, age:0});
+    }
+  }
+
+  function updateGates() {
+    var L = S.level_, out = [], tout = [];
+    for (var i = 0; i < L.groups.length; i++) {
+      var grp = L.groups[i], dc = grp.doorCount;
+      var arriveAt = GROUP_LEAD + i * GROUP_INTERVAL;
+      var start = arriveAt - TRAVEL;
+      var prog = clamp((S.tS2 - start) / TRAVEL, 0, 1.25);
+      var z = 0.24 + 0.62 * prog;
+      /* V3：判定发生在 z≈0.86（队伍所在纵深）。门再往前画就会盖住队伍半个身子，
+         读起来像「人被门切断」。判定后立刻退出绘制，由穿门光爆接管那一瞬。 */
+      if (z > 0.90) continue;
+      var isNext = (i === S.s2GroupIndex);
+      var curLane = clamp(Math.floor(S.teamX / (C.LOGICAL_W / dc)), 0, dc - 1);
+      for (var j = 0; j < grp.gates.length; j++) {
+        var g = grp.gates[j];
+        out.push({
+          id:g.id, group:i, lane:g.lane, doorCount:dc,
+          z:clamp(z, 0.05, 1), op:g.op, label:g.label,
+          valueText:Core.bigintToDecimal(g.value), positive:g.positive,
+          /* V3：陷阱标记随门下发。地面陷阱在近景会被自己的队伍挡住，
+             必须在门板上就有危险标识，否则「高风险高收益」根本没法被看见。 */
+          trapped:!!(grp.traps && grp.traps[j]),
+          highlighted:isNext && (g.lane === curLane)
+        });
+      }
+      if (grp.traps) {
+        for (var t = 0; t < grp.traps.length; t++) {
+          if (!grp.traps[t]) continue;
+          tout.push({
+            group:i, lane:t, doorCount:dc, z:clamp(z, 0.05, 1),
+            type:(grp.trapTypes && grp.trapTypes[t]) || 'spike',
+            highlighted:isNext && (t === curLane)
+          });
+        }
+      }
+    }
+    S.gates = out; S.traps = tout;
+  }
+
+  /* S3 入口：拍 (P0,Z0) 快照 → resolveBattle 一次性锁定唯一结果。
+     V3：战斗中解锁横移，玩家可以「集火」——但这只影响战斗评分与评级，
+     不改写 outcome（胜负、剩余兵力、下一关起始值全部仍由快照锁定），
+     因此 100% 可胜承诺与确定性不受影响。 */
+  function startS3() {
+    pushPhase('S3');
+    S.tS3 = 0;
+    S.finishAdded = false;
+    S.inputLocked = false;
+    if (S.deps && S.deps.input) S.deps.input.setLocked(false);
+    S.battleP0 = S.power;
+    S.battleZ0 = S.level_.enemyPower;
+    S.outcome = Core.resolveBattle({
+      power:S.power, enemyPower:S.level_.enemyPower,
+      level:S.level, entryPower:S.entryPower, isBoss:S.isBoss
+    });
+    /* V4 胜负分叉：已经输了就不该再骗玩家「拖动集火」。 */
+    S.hintText = S.outcome.win
+      ? (S.isBoss ? '拖动集火 Boss！' : '拖动集火，压住僵尸最密的一侧')
+      : '兵力不足，尸潮压上来了';
+    S.bossEntrance = 0;
+    S.focusSum = 0; S.focusN = 0; S.focusScore = 0;
+    S.battleWave = 0; S.focusSampleAt = -999; S.focusX = 240;
+    resetCombat();
+    if (S.deps && S.deps.audio) {
+      S.deps.audio.setIntensity(S.isBoss ? 'boss' : 'battle');
+      if (S.isBoss) S.deps.audio.play('boss.spawn');
+    }
+  }
+
+  /* V3 三波推进：每波有一个确定性漂移的「僵尸最密点」focusX，
+     玩家把队伍拖过去就能提高集火精度。评分只影响评级，不影响胜负。 */
+  function tickS3(dt) {
+    S.tS3 += dt;
+    if (S.deps && S.deps.input) {
+      S.deps.input.tickKey(dt);
+      var tg = S.deps.input.targetX;
+      /* V4 一致性：S3 与 S2 统一为 ~88ms 时间常数的指数跟随（旧版线性 dt/85 手感不同）。 */
+      S.teamX += (tg - S.teamX) * (1 - Math.exp(-dt / 88));
+    }
+    S.unitCount = Math.min(C.MAX_DRAW_UNITS, unitCountFromPower(S.displayPower));
+    var dur = S.outcome.durationMs;
+    var p = clamp(S.tS3 / dur, 0, 1);
+    S.battleT = p;
+    S.battleWave = Math.min(2, Math.floor(p * 3));
+    var wt = S.tS3 * 0.001;
+    S.focusX = 240 + (S.isBoss ? 128 : 152) * Math.sin(wt * 1.15 + S.battleWave * 1.9);
+    if (S.tS3 - S.focusSampleAt >= 110) {
+      S.focusSampleAt = S.tS3;
+      var dist = Math.abs(S.teamX - S.focusX);
+      S.focusSum += clamp(1 - dist / 215, 0, 1);
+      S.focusN++;
+    }
+    var t1000 = Math.floor(p * 1000);
+    if (S.outcome.win) {
+      S.displayPower = Core.interpolate(S.battleP0, S.outcome.powerAfter, t1000);
+      S.enemyPower = Core.interpolate(S.battleZ0, 0n, t1000);
+    } else {
+      S.displayPower = Core.interpolate(S.battleP0, 0n, t1000);
+      S.enemyPower = Core.interpolate(S.battleZ0, S.battleZ0 - S.battleP0, t1000);
+    }
+    S.bossEntrance = clamp(S.tS3 / 500, 0, 1);
+    /* V4：整套「每帧随机撒静态短线 / 随机爆炸点」删除，换成确定性弹道 + 接触帧反馈。
+       旧实现里 tx 字段还会被 effects 映射丢掉，所谓「弹道射向集火点」从未真正生效。 */
+    tickCombat(dt);
+    /* 收尾慢放：只把特效老化降到 0.35×，gameplay 时间不变，
+       因此 durationMs / tS3 / 评级 / 胜负全部不受影响（旧版是假的黄色蒙版）。 */
+    if (S.outcome.win && (dur - S.tS3) < 190 && !S.finishAdded) {
+      S.finishAdded = true;
+      S.fxSlowT = 190;
+      if (!S.reducedMotion) {
+        addEffect({kind:'impact', x:0, y:0, z:0.30,
+                   uz:(S.focusX - 240) / 240, zz:0.30, text:'',
+                   amount:3, t:0, ttl:320, age:0, seed:0.5});
+        addEffect({kind:'flash', x:0, y:0, z:0, text:'', amount:0.10, t:0, ttl:150, age:0});
+        addEffect({kind:'shake', x:0, y:0, z:0, text:'', amount:5, t:0, ttl:190, age:0});
+      }
+      if (S.deps && S.deps.audio) S.deps.audio.play('zombie.down', {pitch:7});
+    }
+    if (S.tS3 >= dur) startS4();
+  }
+
+  /* 战斗评分 → 评级。纯表现层：不写入 power / outcome / 下一关起始值。 */
+  function gradeFor(score, win) {
+    if (!win) return 'D';
+    if (score >= 0.74) return 'S';
+    if (score >= 0.52) return 'A';
+    if (score >= 0.30) return 'B';
+    return 'C';
+  }
+
+  function startS4() {
+    pushPhase('S4');
+    S.tS4 = 0;
+    S.power = S.outcome.powerAfter;
+    S.displayPower = S.outcome.powerAfter;
+    if (S.outcome.win) S.enemyPower = 0n;
+    S.focusScore = S.focusN > 0 ? clamp(S.focusSum / S.focusN, 0, 1) : 0;
+    S.grade = gradeFor(S.focusScore, S.outcome.win);
+    recordHistory();
+    if (S.outcome.win) {
+      if (S.level >= S.bestLevel) { S.bestLevel = S.level; saveBest(S.bestLevel); }
+      if (S.deps && S.deps.audio) { S.deps.audio.setIntensity('result'); S.deps.audio.play('victory'); }
+      showWin();
+    } else {
+      if (S.deps && S.deps.audio) { S.deps.audio.setIntensity('result'); S.deps.audio.play('defeat'); }
+      showLose();
+    }
+  }
+
+  function tickS1(dt) {
+    S.tS1 += dt;
+    if (S.tS1 >= C.PREVIEW_MS) startS2();
+  }
+  function tickS2(dt) {
+    S.tS2 += dt;
+    if (S.deps && S.deps.input) {
+      S.deps.input.tickKey(dt);
+      var target = S.deps.input.targetX;
+      /* V3 手感：从「几乎瞬移」的线性跟随（dt/90）改为 ~88ms 时间常数的指数跟随。
+         调研结论：队伍应当略微滞后于手指，早期小幅移动优于末期急转；
+         瞬移会让整群人像贴纸滑动，缺少「拖着一群人跑」的重量。 */
+      var k = 1 - Math.exp(-dt / 88);
+      S.teamX += (target - S.teamX) * k;
+    }
+    var L = S.level_;
+    while (S.s2GroupIndex < L.groups.length) {
+      var i = S.s2GroupIndex;
+      var arriveAt = GROUP_LEAD + i * GROUP_INTERVAL;
+      if (S.tS2 < arriveAt) break;
+      resolveGroup(i);
+      S.s2GroupIndex++;
+    }
+    updateGates();
+    var endAt = GROUP_LEAD + (L.groups.length - 1) * GROUP_INTERVAL + GROUP_TAIL;
+    if (S.s2GroupIndex >= L.groups.length && S.tS2 >= endAt) startS3();
+  }
+
+  function buildState() {
+    var L = S.level_;
+    var dp = S.displayPower || S.power;
+    /* V4：自定义字段（uz/zz/seed）必须透传，否则接触帧特效会退化成旧版的随机点。 */
+    var eff = S.effects.slice();
+    return {
+      frame:S.frameCount, level:S.level, phase:S.phase,
+      isBoss:S.isBoss, theme:L ? L.theme : 'default',
+      reducedMotion:S.reducedMotion, muted:S.muted,
+      powerText:Core.formatNumber(dp),
+      enemyText:Core.formatNumber(S.enemyPower),
+      bossHpText:S.isBoss ? Core.formatNumber(S.enemyPower) : null,
+      unitCount:unitCountFromPower(dp),
+      hordeCount:hordeCountFor(S.level, S.phase, S.battleT),
+      cameraZ:TEAM_Z, teamX:S.teamX,
+      /* V4 战场数据（render 只读投影，不做二次随机生成） */
+      combatWin:S.outcome ? S.outcome.win : true,
+      bullets:S.bullets.slice(), fireSlots:S.fireSlots.slice(),
+      bossHit:S.bossHitT, battleHits:S.battleHits, battleKills:S.battleKills,
+      zombies:S.zSlots.map(function (z) {
+        var st = S.zState[z.idx] || {flash:0, knock:0, dead:0, hits:0};
+        return {idx:z.idx, u:z.u, z:z.z, phase:z.phase, tint:z.tint, stagger:z.stagger,
+                flash:st.flash, knock:st.knock, dead:st.dead, hits:st.hits};
+      }),
+      gates:S.gates.slice(), traps:S.traps.slice(), effects:eff,
+      hintText:S.hintText,
+      /* V3 修复：S3/S4 时 nextGroup 曾为 null → 进度条回落到 0/20（截图可见
+         「连击 x15 但 0/20 组门」的矛盾）。改用已穿门组数，战斗/结算阶段显示满格。 */
+      nextGroup:S.phase === 'S2' ? S.s2GroupIndex : S.gateChoices.length,
+      previewGroups:L ? L.groups : null,
+      groupCount:L ? L.groups.length : 0,
+      battleT:S.battleT, bossEntrance:S.bossEntrance,
+      /* V3 表现层新增：连击 / 战斗波次 / 集火点 / 评级（均不参与判定） */
+      combo:S.combo, bestCombo:S.bestCombo,
+      battleWave:S.battleWave, focusX:S.focusX, focusScore:S.focusScore,
+      grade:S.grade, sector:S.sector,
+      overlay:null
+    };
+  }
+  function drawFrame() {
+    if (S.deps && S.deps.render) S.deps.render.draw(buildState());
+  }
+  function tick(dt) {
+    if (S.paused) return;
+    S.frameCount++;
+    if (S.phase === 'HOME') { drawFrame(); return; }
+    /* V3 hitstop：重击瞬间冻结 38–85ms，只让特效以 25% 速度走。
+       这是「重量」的主要来源（调研：30–80ms 的冻结比任何动画都更能表现撞击），
+       且因为只冻结画面推进、不冻结渲染，不会造成掉帧假象。 */
+    if (S.hitstop > 0) {
+      S.hitstop -= dt;
+      tickEffects(dt * 0.25);
+      drawFrame();
+      return;
+    }
+    tickEffects(dt * (S.fxSlowT > 0 ? FX_SLOW_SCALE : 1));
+    switch (S.phase) {
+      case 'S1': tickS1(dt); break;
+      case 'S2': tickS2(dt); break;
+      case 'S3': tickS3(dt); break;
+      case 'S4': S.tS4 += dt; break;
+      default: break;
+    }
+    drawFrame();
+  }
+
+  function bindButtons() {
+    var next = el('btn-next');
+    if (next) next.addEventListener('click', function () {
+      if (S.phase !== 'S4' || !S.outcome || !S.outcome.win) return;
+      if (S.deps && S.deps.audio) S.deps.audio.play('ui.click');
+      enterLevel(S.level + 1);
+    }, false);
+    var retry = el('btn-retry');
+    if (retry) retry.addEventListener('click', function () {
+      if (S.phase !== 'S4' || !S.outcome || S.outcome.win) return;
+      if (S.deps && S.deps.audio) S.deps.audio.play('ui.click');
+      enterLevel(S.level);
+    }, false);
+  }
+  function syncMuteUI() {
+    var a = el('btn-mute'), b = el('btn-mute-home');
+    if (a) { a.textContent = S.muted ? '×' : '♪'; a.classList.toggle('on', !S.muted); }
+    if (b) { b.textContent = S.muted ? '♪ 声音：关' : '♪ 声音：开'; b.classList.toggle('on', !S.muted); }
+  }
+  function startGame() { hideAllOverlays(); enterLevel(1); }
+  function restart() {
+    if (S.phase === 'HOME') return;
+    hide('overlay-help');
+    enterLevel(S.level);
+  }
+  function toggleMute() {
+    S.muted = !S.muted;
+    if (S.deps && S.deps.audio) S.deps.audio.setMuted(S.muted);
+    syncMuteUI();
+    return S.muted;
+  }
+
+  /* @param {object} deps 显式装配：core / assets / audio / render / input */
+  function start(deps) {
+    S.deps = deps;
+    S.bestLevel = loadBest();
+    S.muted = deps.audio ? deps.audio.isMuted() : false;
+    try {
+      S.reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) { S.reducedMotion = false; }
+    bindButtons();
+    syncMuteUI();
+    if (deps.input) {
+      deps.input.onConfirm = function () { if (S.phase === 'S1') startS2(); };
+      deps.input.onGesture = function () { if (deps.audio) deps.audio.unlock(); };
+    }
+    Object.defineProperty(window, '__GAME_DEBUG__', {
+      get: function () { return buildDebugSnapshot(); },
+      configurable:false, enumerable:true
+    });
+    var canvas = el('game-canvas');
+    if (canvas) canvas.addEventListener('pointerdown', function () {
+      if (S.phase === 'S1') startS2();
+      if (deps.audio) deps.audio.unlock();
+    }, false);
+
+    var last = 0;
+    function loop(ts) {
+      var dt = last ? Math.min(50, ts - last) : 16.67;
+      last = ts;
+      tick(dt);
+      window.requestAnimationFrame(loop);
+    }
+    window.requestAnimationFrame(loop);
+    document.addEventListener('visibilitychange', function () {
+      var visible = !document.hidden;
+      S.paused = !visible;
+      if (deps.audio) deps.audio.onVisibility(visible);
+      if (visible) last = 0;
+    }, false);
+
+    S.phase = 'HOME';
+    drawFrame();
+    return {
+      startGame:startGame, restart:restart, toggleMute:toggleMute,
+      setPaused:function (b) { S.paused = !!b; },
+      enterLevel:enterLevel, getDebugSnapshot:buildDebugSnapshot
+    };
+  }
+  return {start:start};
+
+})(window.__GAME_CORE__);
+</script>
+
+<script id="game-boot">
+(function (Core) {
+  'use strict';
+  function el(id) { return document.getElementById(id); }
+  function show(id) { var e = el(id); if (e) e.classList.remove('hidden'); }
+  function hide(id) { var e = el(id); if (e) e.classList.add('hidden'); }
+
+  /* UMD 挂载的核心收敛为不可写属性（其值已由 Object.freeze 深冻结） */
+  var coreVal = window.__GAME_CORE__;
+  try {
+    Object.defineProperty(window, '__GAME_CORE__', {
+      value:coreVal, writable:false, configurable:false, enumerable:true
+    });
+  } catch (e) { /* 保持原状，不影响游玩 */ }
+
+  /* 解析显式开关（默认 off，零请求） */
+  var initial = {mode:'off', url:''};
+  try {
+    var qs = new URLSearchParams(window.location.search);
+    if (qs.get('assets') === 'local') initial.mode = 'local';
+    var rm = qs.get('manifest');
+    if (rm) { initial.mode = 'remote'; initial.url = rm; }
+  } catch (e) { /* 保持默认 */ }
+
+  var canvas = el('game-canvas');
+  var assets = AssetRuntime.create(initial);
+  var audio = AudioEngine.create();
+  var render = Renderer.create(canvas);
+  var input = InputController.create(canvas);
+  var session = GameSession.start({
+    core:Core, assets:assets, audio:audio, render:render, input:input
+  });
+
+  /* 首次用户手势解锁音频（window 级，覆盖按钮与画布） */
+  function unlockOnce() { audio.unlock(); }
+  window.addEventListener('pointerdown', unlockOnce, false);
+  window.addEventListener('keydown', unlockOnce, false);
+
+  var startBtn = el('btn-start');
+  if (startBtn) startBtn.addEventListener('click', function () {
+    audio.unlock(); audio.play('ui.click');
+    session.startGame();
+  }, false);
+
+  function bindMute(id) {
+    var b = el(id);
+    if (b) b.addEventListener('click', function () {
+      session.toggleMute(); audio.play('ui.click');
+    }, false);
+  }
+  bindMute('btn-mute');
+  bindMute('btn-mute-home');
+
+  var restartBtn = el('btn-restart');
+  if (restartBtn) restartBtn.addEventListener('click', function () {
+    session.restart(); audio.play('ui.click');
+  }, false);
+
+  var helpBtn = el('btn-help');
+  if (helpBtn) helpBtn.addEventListener('click', function () {
+    assets.renderHealth(); show('overlay-help'); session.setPaused(true);
+    audio.play('ui.click');
+  }, false);
+  var closeHelp = el('btn-close-help');
+  if (closeHelp) closeHelp.addEventListener('click', function () {
+    hide('overlay-help'); session.setPaused(false);
+    audio.play('ui.click');
+  }, false);
+
+  function doResize() {
+    var stage = canvas.parentElement;
+    var w = stage ? stage.clientWidth : 480;
+    var h = stage ? stage.clientHeight : 854;
+    var dpr = 1;
+    try { dpr = Math.min(window.devicePixelRatio || 1, 2); } catch (e) {}
+    render.resize(dpr, w, h);
+  }
+  window.addEventListener('resize', doResize, false);
+  window.addEventListener('orientationchange', doResize, false);
+  doResize();
+
+  /* 静态自检：默认态零请求 + 无外部资源项；静默执行，不向控制台输出 */
+  function selfCheck() {
+    var problems = 0;
+    try {
+      var h = window.__ASSET_HEALTH__;
+      if (h.externalRequestCount !== 0) problems++;
+      if (h.gameplayBlocked !== false) problems++;
+      if (initial.mode === 'off' && h.summary.generated !== 12) problems++;
+    } catch (e) { problems++; }
+    try {
+      var res = performance.getEntriesByType('resource');
+      for (var i = 0; i < res.length; i++) {
+        var n = res[i].name || '';
+        var pfx = n.slice(0, 5);
+        if (pfx === 'http:' || pfx === 'https') problems++;
+      }
+    } catch (e) { /* 忽略 */ }
+    return problems;
+  }
+  selfCheck();
+
+})(window.__GAME_CORE__);
+</script>
+
+</body>
+</html>

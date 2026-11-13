@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+
+# 工作区元数据（编辑器/Agent 项目数据，不随仓库分发）
+.workbuddy/
+.idea/
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python（测试脚本的运行环境）
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 测试运行产物：每次跑 browser_check.py 都会被覆写；历史轮次的 log/结果同理，不随仓库分发
+tests/test-results*.json
+tests/*.log
+tests/screenshots_http_v3/
+
+# 历史迭代截图（V1/V2 中间过程产物）。V3/V4 交付证据在 tests/screenshots/ 下随仓库保留
+tests/screenshots/v2_*
+tests/screenshots/refactor_*
+
+# V4 首轮「修复前」的过程截图：不带关卡号，弹道过粗 / 失败局仍开火 / 仍有 0 气泡。
+# 正式证据以带关卡号的 v4_*_L*_s3_* 与 docs/screenshots/v4-*.png 为准，避免两套图误导。
+tests/screenshots/v4_win_s3_*.png
+tests/screenshots/v4_lose_s3_*.png
+tests/screenshots/v4_win_s4.png
+tests/screenshots/v4_lose_s4.png

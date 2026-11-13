@@ -1,0 +1,35 @@
+{
+  "name": "honest-gate-zombies",
+  "version": "4.0.0",
+  "private": true,
+  "description": "单文件 Canvas 2D 数字门跑酷 + 打僵尸：20–30 组门、单关 40–58 秒、V4 确定性弹道与接触帧战斗反馈、零依赖零外链、断网可玩。",
+  "keywords": [
+    "html5-game",
+    "canvas2d",
+    "single-file",
+    "github-pages",
+    "incremental",
+    "bigint"
+  ],
+  "homepage": "https://guyue55.github.io/honest-gate-zombies/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guyue55/honest-gate-zombies.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guyue55/honest-gate-zombies/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/extract-core.js && node tests/core.test.js && node tests/static-audit.js && node scripts/check-deploy.mjs",
+    "test:api": "node tests/extract-core.js",
+    "test:core": "node tests/core.test.js",
+    "test:audit": "node tests/static-audit.js",
+    "test:deploy": "node scripts/check-deploy.mjs",
+    "serve": "python3 -m http.server 8080",
+    "e2e": "python3 tests/browser_check.py --protocol file"
+  }
+}

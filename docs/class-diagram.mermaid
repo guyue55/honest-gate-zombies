@@ -1,0 +1,246 @@
+classDiagram
+    class GameCore {
+        <<UMD pure module>>
+        +CONSTANTS : Readonly~Object~
+        +PHASES : string[]
+        +BUILTIN_MANIFEST : Manifest
+        +makeRng(seed) Function
+        +seedFor(level) number
+        +powInt(base, exp) bigint
+        +maxBig(a, b) bigint
+        +formatNumber(v, opts) string
+        +formatCompact(v) string
+        +bigintToDecimal(v) string
+        +applyGate(power, gate) GateResult
+        +applyGatePath(power, path, level) PathResult
+        +bestPath(level) BestPath
+        +gateCountFor(level) number
+        +isBossLevel(level) boolean
+        +entryPowerFor(level) bigint
+        +enemyPowerFor(level) bigint
+        +milestoneFor(level) string
+        +generateLevel(level) Level
+        +verifySolvable(level) Solvability
+        +tuneLevel(level, round) Level
+        +resolveBattle(snapshot) BattleOutcome
+        +interpolate(from, to, t1000) bigint
+        +buildAssetPlan(manifest, opts) AssetPlan
+        +resolveAssetSource(entry, ctx) Promise~AssetResolution~
+        +createHealthSnapshot(plan, states, meta) AssetHealthSnapshot
+        +projectToScreen(z, x) Projection
+        +buildScene(input) SceneDescription
+    }
+
+    class Level {
+        +level : number
+        +seed : number
+        +isBoss : boolean
+        +groupCount : number
+        +entryPower : bigint
+        +enemyPower : bigint
+        +bossHp : bigint
+        +groups : GateGroup[]
+        +theme : string
+        +milestone : string
+        +tunedRounds : number
+    }
+    class GateGroup {
+        +index : number
+        +doorCount : number
+        +gates : Gate[]
+        +worldY : number
+    }
+    class Gate {
+        +id : string
+        +op : GateOp
+        +value : bigint
+        +label : string
+        +positive : boolean
+        +lane : number
+    }
+    class GateResult {
+        +before : bigint
+        +power : bigint
+        +delta : bigint
+        +op : GateOp
+        +value : bigint
+        +label : string
+    }
+    class Solvability {
+        +solvable : boolean
+        +bestPower : bigint
+        +requiredPower : bigint
+        +path : number[]
+        +everyGroupHasPositive : boolean
+        +reason : string
+    }
+    class BattleOutcome {
+        +win : boolean
+        +powerBefore : bigint
+        +enemyPower : bigint
+        +powerAfter : bigint
+        +loss : bigint
+        +rollbackPower : bigint
+        +durationMs : number
+        +frames : number
+    }
+    class Manifest {
+        +version : string
+        +ttlMs : number
+        +updatedAt : number
+        +entries : ManifestEntry[]
+    }
+    class ManifestEntry {
+        +id : string
+        +type : AssetType
+        +version : string
+        +primary : string
+        +fallbacks : string[]
+        +timeoutMs : number
+        +generator : string
+        +required : false
+    }
+    class AssetLoader {
+        <<interface / injection point>>
+        +load(url, timeoutMs) Promise~LoadResult~
+    }
+    class HttpAssetLoader
+    class MockAssetLoader
+    class AssetPlan {
+        +manifestVersion : string
+        +mode : AssetMode
+        +items : AssetPlanItem[]
+        +plannedRequestCount : number
+    }
+    class AssetResolution {
+        +id : string
+        +status : AssetStatus
+        +source : string
+        +reason : string
+        +elapsedMs : number
+        +downgradeCount : number
+    }
+    class AssetHealthSnapshot {
+        +externalRequestCount : number
+        +gameplayBlocked : false
+        +assets : Record
+        +summary : Object
+    }
+
+    class GameSession {
+        <<orchestrator>>
+        +enterLevel(n) void
+        +tick(dt) void
+        +onVisibility(visible) void
+        +getDebugSnapshot() Object
+        -state : SessionState
+        -phaseTrace : string[]
+    }
+    class Renderer {
+        <<interface / A-11 port>>
+        +beginFrame(scene) void
+        +drawBackground(scene) void
+        +drawTrack(scene) void
+        +drawGate(gate, scene) void
+        +drawUnit(unit, scene) void
+        +drawHorde(horde, scene) void
+        +drawBoss(boss, scene) void
+        +drawEffects(effects, scene) void
+        +drawHud(hud, scene) void
+        +endFrame(scene) void
+        +resize(dpr, cssW, cssH) void
+        +setQuality(tier) void
+        +project(z, x) Projection
+    }
+    class Canvas2DRenderer {
+        <<current implementation>>
+        -ctx : CanvasRenderingContext2D
+        -quality : QualityTier
+        +create(canvas) Renderer
+    }
+    class SceneDescription {
+        <<pure data / JSON serializable>>
+        +cameraZ : number
+        +gates : GateVisual[]
+        +units : UnitVisual[]
+        +horde : HordeVisual
+        +boss : BossVisual
+        +effects : EffectEvent[]
+        +hud : HudSnapshot
+        +post : PostFx
+    }
+    class SceneInput {
+        <<pure data>>
+        +frame : number
+        +powerText : string
+        +unitCount : number
+    }
+    class QualityTier {
+        <<enum high|mid|low>>
+    }
+    class AudioSequencer {
+        <<webaudio / A-12>>
+        +start() void
+        +stop() void
+        +setIntensity(tier) void
+        +setMuted(b) void
+        -scheduleStep(step, when) void
+    }
+    class AudioEngine {
+        <<webaudio adapter>>
+        +unlock() void
+        +play(id) void
+        +setMuted(b) void
+    }
+    class InputController {
+        +targetX : number
+        +attach() void
+    }
+    class AssetRuntime {
+        +setMode(mode, url) void
+        +refresh() void
+        +getHealth() AssetHealthSnapshot
+    }
+    class AssetTestHooks {
+        +simulateFailure(opts) void
+        +reset() void
+        +setMode(mode, url) void
+    }
+
+    GameCore ..> Level : creates
+    GameCore ..> GateResult : creates
+    GameCore ..> Solvability : creates
+    GameCore ..> BattleOutcome : creates
+    GameCore ..> AssetPlan : creates
+    GameCore ..> AssetResolution : creates
+    GameCore ..> AssetHealthSnapshot : creates
+    GameCore ..> Manifest : owns BUILTIN_MANIFEST
+    Level *-- GateGroup : contains 2..6
+    GateGroup *-- Gate : contains 2..3
+    Manifest *-- ManifestEntry : contains
+    AssetPlan o-- ManifestEntry : references
+    AssetLoader <|.. HttpAssetLoader : implements
+    AssetLoader <|.. MockAssetLoader : implements (test double)
+    GameCore ..> AssetLoader : injected via ctx.loader
+    AssetRuntime ..> GameCore : consumes
+    AssetRuntime ..> AssetLoader : injects
+    AssetRuntime ..> AssetHealthSnapshot : exposes
+    AssetTestHooks ..> AssetRuntime : injects MockAssetLoader
+    GameSession ..> GameCore : consumes (incl. buildScene)
+    GameSession ..> SceneDescription : produces pure data, never ctx
+    GameSession ..> Renderer : drives via SceneDescription only
+    GameSession ..> AudioEngine : drives
+    GameSession ..> InputController : reads targetX
+    GameSession ..> AssetRuntime : reads health
+    GameCore ..> SceneDescription : creates (buildScene)
+    SceneInput ..> SceneDescription : buildScene input
+    Renderer <|.. Canvas2DRenderer : implements (current)
+    Renderer ..> SceneDescription : consumes
+    Canvas2DRenderer ..> QualityTier : setQuality
+    SceneDescription o-- GateVisual : contains
+    SceneDescription o-- UnitVisual : contains <=120
+    SceneDescription o-- EffectEvent : contains
+    AudioEngine *-- AudioSequencer : owns BGM sequencer
+    GameSession ..> AudioSequencer : setIntensity by phase
+    Renderer ..> Level : reads
+    Renderer ..> GameCore : formatNumber

@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0-builtin",
+  "ttlMs": 21600000,
+  "updatedAt": 1731196800000,
+  "entries": [
+    { "id": "bg.track",     "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.track",      "required": false },
+    { "id": "gate.frame",   "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.gate",       "required": false },
+    { "id": "unit.soldier", "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.soldier",    "required": false },
+    { "id": "unit.zombie",  "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.zombie",     "required": false },
+    { "id": "unit.boss",    "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.boss",       "required": false },
+    { "id": "fx.particle",  "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.particle",   "required": false },
+    { "id": "hud.icons",    "type": "visual", "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "canvas.icons",      "required": false },
+    { "id": "sfx.gate",     "type": "audio",  "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "webaudio.gate",     "required": false },
+    { "id": "sfx.fire",     "type": "audio",  "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "webaudio.fire",     "required": false },
+    { "id": "sfx.win",      "type": "audio",  "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "webaudio.win",      "required": false },
+    { "id": "sfx.boss",     "type": "audio",  "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "webaudio.boss",     "required": false },
+    { "id": "font.system",  "type": "font",   "version": "1.0.0", "primary": "", "fallbacks": [], "timeoutMs": 1500, "generator": "system-font-stack", "required": false }
+  ]
+}
