@@ -67,6 +67,25 @@ gh api -X POST repos/guyue55/honest-gate-zombies/pages \
 - 页面引用的本地资源真实存在且大小写一致（Pages 是 Linux，大小写敏感）
 - 单文件体积 ≤ 300 KiB
 
+## 部署前的子路径预检（本机真机，已跑完）
+
+上线前先模拟了 GitHub Pages 项目站点的真实目录结构：把 `index.html` / `.nojekyll` /
+`assets/manifest.json` 复制到一个临时站点根目录下的 `honest-gate-zombies/` 子目录，
+用 Python `http.server` 起静态服务，本机 Chrome 真机打开
+`http://127.0.0.1:8766/honest-gate-zombies/index.html`（端口/域名不同，路径结构与线上一致）：
+
+| 检查 | 结果 |
+|---|---|
+| HTTP 状态 | **200** |
+| `document.title` | 诚实数字门 · 打僵尸 |
+| `#btn-start` / `window.__GAME_DEBUG__` | 均存在，初始 `phase=HOME` |
+| 点击「开始游戏」 | `phase=S1`、`level=1`，S1 门组预览完整渲染（20 组门 / 分 3 段推进） |
+| `performance.getEntriesByType('resource')` | **`[]`** —— 零外部资源请求 |
+| console error / pageerror / requestfailed / 外部请求 | 全为 `[]` |
+
+结论：**挂在 `/honest-gate-zombies/` 子路径下也不会 404**，
+`scripts/check-deploy.mjs` 的「无根绝对路径」断言得到真机印证（截图目视亦无空白 / 加载失败提示）。
+
 ## 验收清单
 
 部署后在浏览器里确认：

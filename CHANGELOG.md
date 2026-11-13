@@ -29,8 +29,21 @@
 - S3 队伍跟随与 S2 统一为 88ms 指数跟随；准星 y 落在尸潮前沿投影上；HUD 增加波次 / 击倒胶囊。
 - 结算卡增加「命中 N 发 · 击倒 M」；debug 快照新增只读 `combat` 观测字段。
 
-**验证**：`npm test` 四层全绿；真机 L1 胜利 `shots=362 / hits=350 / kills=30 / alive=0 / grade=S`，
-失败 `kills=0 / alive=30`、`CONSOLE []`、`PAGEERR []`；双协议回归与帧率见 `docs/TEST_REPORT.md` §14。
+**GitHub 工程化（同批交付）**
+
+- 补齐 `.gitignore` / `LICENSE`(MIT) / `.editorconfig` / `package.json`（`npm test` 四层，版本 4.0.0）/
+  `.github/workflows/ci.yml` / Issue 模板 / `CONTRIBUTING.md` / `SECURITY.md`。
+- 新增 `scripts/check-deploy.mjs`：把「单文件 / 零外链 / `.nojekyll` / 唯一 fetch 带 `file:` 短路 /
+  默认 `mode=off` / 无根绝对路径 / 资源大小写 / ≤300 KiB」变成 11 条可执行断言。
+- 新增 `docs/DEPLOY.md`（Pages `main` / `/ (root)`、三种打开方式、发布流程、子路径真机预检、验收清单）。
+- README 增加在线试玩入口、徽章、V4 四张精选截图、仓库结构与文档索引；
+  `docs/ARCHITECTURE.md` / `docs/PRD.md` / `tests/README.md` 补 V3/V4 现行口径勘误。
+- 仓库名自行定为 `honest-gate-zombies`（与首页品牌一致），未向用户确认。
+
+**验证**：`npm test` 四层全绿（26 API / 15809 断言 / 硬违规 0 / 部署守卫 PASS）、7 个 script 块语法 7/7；
+真机 L1 胜利 `shots=362 / hits=350 / kills=30 / alive=0 / grade=S`，失败 `kills=0 / alive=30`、
+`CONSOLE []`、`PAGEERR []`；L1–L5 连续全 WIN 全 S；Pages 子路径真机预检 200 / 零外部请求 / 零报错；
+双协议回归与帧率见 `docs/TEST_REPORT.md` §14。
 
 ---
 

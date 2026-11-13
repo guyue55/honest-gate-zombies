@@ -135,4 +135,39 @@
 | 逐屏 | S2 / S3 三波 / Boss / 胜负 / 灰阶 / reduced-motion 截图 | 子弹起点在枪口、终点在僵尸身上；命中同帧闪白 + 火花；失败时尸潮不消失 |
 | 线上 | Pages HTTPS 实机 | 可开局、无 404、无控制台报错 |
 
-> 状态栏会在验证完成后回填；所有「看起来对但没跑过」的项一律不标完成。
+## 5. 验证结果
+
+### 5.1 已跑完的层
+
+| 层 | 命令 / 手段 | 结果 | 判定 |
+|---|---|---|---|
+| Core 契约 | `node tests/extract-core.js` | `API 数量断言 : PASS (26)` | ✅ |
+| 纯函数断言 | `node tests/core.test.js` | `通过: 15809  失败: 0  合计: 15809` | ✅ |
+| 静态审计 | `node tests/static-audit.js` | `硬违规总数: 0 / 判定: PASS`；`game-core` / `game-session` 块 `ctx.*` code 命中 0 | ✅ |
+| 部署守卫 | `node scripts/check-deploy.mjs` | 11 条 PASS，`硬性问题: 0 / 判定: PASS`，193.5 KiB ≤ 300 KiB | ✅ |
+| 语法 | 7 个 `<script>` 块逐个 `new Function` | `blocks 7 bad 0` | ✅ |
+| 真机 · 胜利 | `v4_shots.py win 1` | `shots=362 / hits=350 / kills=30 / slots=30 / alive=0 / grade=S`，`CONSOLE []`、`PAGEERR []` | ✅ |
+| 真机 · 失败（最终代码重拍） | `v4_shots.py lose 1` | `shots=0 / hits=0 / kills=0 / bullets=0 / alive=30 / grade=D`；截图确认无子弹 / 无准星 / 无漂浮 0 气泡、尸潮满编前压 | ✅ |
+| 真机 · reduced-motion | `v4_shots.py win-reduced 1` | 无闪白 / 火花 / 枪口焰 / 冲击环 / 震动，弹丸降级细线仍可读 | ✅ |
+| 真机 · 连续 5 关（含 Boss） | `v4_shots.py win 5` | L1–L5 全 WIN、全 S，S2 31.7 / 33.1 / 33.2 / 34.6 / 39.0 秒；L5 `shots=493 / hits=483 / kills=34 / alive=0`；`CONSOLE []`、`PAGEERR []`、`EXIT=0` | ✅ |
+| 截图证据 | `docs/screenshots/v4-*.png` + `tests/screenshots/v4_*_L*_s3_*.png` | 胜利 / Boss / 失败 / 降级四张精选 + 逐关 5 时点全时序 | ✅ |
+
+`index.html` 最终 **4359 行 / 198,171 字节**，全文 `http(s)://` 字面量 0、`Math.random` 2 处均在注释内
+（`static-audit.js` 先 `stripJsComments()` 再检索，`code` 命中 0）。
+
+### 5.2 二次分析确认链（用户硬要求）
+
+`docs/TEST_REPORT.md §14.6` 逐条记录了 7 次「第一反应 → 二次复核 → 最终处置」：
+`kills=31>slots=30`、弹道低对比度、加粗后像橙色管子、失败局全灭仍开火、
+失败局漂浮 `0` 气泡、失败氛围不足、`Math.random` 计数与文档口径不符。
+所有视觉结论均由真机截图或只读 debug 快照确认，未以「代码看起来对」结案。
+
+### 5.3 最终双协议全量回归
+
+> 待 `browser_check.py --protocol file` 与 `--protocol http --port 8765` 跑完后回填（通过数 / FPS / 控制台 / 外部请求）。
+
+### 5.4 线上 GitHub Pages 验证
+
+> 待仓库创建、推送、Pages 开启后回填（HTTPS 可开局 / Network 无 404 与外部请求 / Console 零 error）。
+
+所有「看起来对但没跑过」的项一律不标完成；⏳ 的两节在跑完后回填。

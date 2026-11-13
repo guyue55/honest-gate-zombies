@@ -182,7 +182,7 @@ index.html                   ← 游戏本体（唯一必需文件，双击即�
 .nojekyll                    ← Pages 跳过 Jekyll
 assets/manifest.json         ← 资源清单（默认零请求，仅 ?assets=local 时可能读取）
 scripts/check-deploy.mjs     ← 可静态托管性守卫
-tests/                       ← Node 三层 + Playwright 双协议回归 + 截图证据
+tests/                       ← Node 三层自检 + Playwright 双协议回归 + 截图证据
 docs/                        ← PRD / 架构 / 渲染 / 测试报告 / 视觉 / V4 审查 / 部署
 docs/screenshots/            ← README 展示用精选图
 .github/workflows/ci.yml     ← push / PR 跑 Node 四层自检
@@ -195,7 +195,7 @@ docs/screenshots/            ← README 展示用精选图
 | [`docs/DEPLOY.md`](docs/DEPLOY.md) | 在线地址、Pages 配置、发布流程、验收清单、故障排查 |
 | [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md) | 全量测试报告；§13 V3、§14 V4 为最新版本 |
 | [`docs/V4-AUDIT.md`](docs/V4-AUDIT.md) | V4 全面审查清单、联网调研依据、硬约束复核 |
-| [`docs/VISUAL-UPGRADE.md`](docs/VISUAL-UPGRADE.md) | V2/V3 视觉迭代与逐屏缺陷定位 |
+| [`docs/VISUAL-UPGRADE.md`](docs/VISUAL-UPGRADE.md) | V2/V3 视觉迭代、逐屏缺陷定位；§9 为 V4 战斗视觉重构 |
 | [`docs/PRD.md`](docs/PRD.md) · [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 需求与 26 项 Core API / 状态机契约 |
 | [`docs/RENDERING.md`](docs/RENDERING.md) · [`docs/RESEARCH.md`](docs/RESEARCH.md) | 2.5D 透视与早期玩法调研 |
 | [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) | 版本记录 / 贡献约束 / 隐私与安全 |
