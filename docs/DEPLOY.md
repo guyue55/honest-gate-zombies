@@ -110,7 +110,8 @@ gh api -X POST repos/guyue55/honest-gate-zombies/pages \
 
 > 如实说明：线上真机只跑到 S2 与断网后的继续操作，**没有在线上重复跑完整一关**；
 > 完整通关 / 三端输入 / 20 次重试 / 5 视口 / 灰阶 / reduced-motion / 帧率由
-> `tests/browser_check.py` 双协议全量回归与 V4 逐屏验证覆盖（见 `docs/TEST_REPORT.md` §14.5、§14.8）。
+> `tests/browser_check.py` 双协议**串行**全量回归覆盖，最终 `file://` **285/285**、`http://` **284/284**
+> 均零失败（41 个 FPS 样本平均 60.61 / 60.60，最大 28 组门），见 `docs/TEST_REPORT.md` §14.5、§14.8。
 > 因此上表之外的 checkbox 保留为人工复核项，不冒充已自动化验证。
 
 ## 自定义域名（可选）

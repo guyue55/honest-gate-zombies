@@ -45,7 +45,9 @@
 `CONSOLE []`、`PAGEERR []`；L1–L5 连续全 WIN 全 S；
 Pages 子路径预检与线上 `https://guyue55.github.io/honest-gate-zombies/` 真机验收均为
 200 / `HOME→S1→S2` / 断网后仍可继续操作 / 零外部资源请求 / 零报错；CI 首次 push 后 9 秒 success；
-双协议回归与帧率见 `docs/TEST_REPORT.md` §14。
+双协议**串行**全量回归 `file://` **285/285**、`http://` **284/284** 均零失败
+（EXIT=0、`consoleErrors=[]`、41 个 FPS 样本平均 60.61 / 60.60、最大 28 组门），
+详见 `docs/TEST_REPORT.md` §14。
 
 **测试基建修复（回归暴露，非产品问题）**
 
@@ -53,7 +55,8 @@ Pages 子路径预检与线上 `https://guyue55.github.io/honest-gate-zombies/` 
   `browser_check.py` 改为按协议分文件输出（`<protocol>.json`）+ `.tmp` 原子替换 + `--results` 参数。
 - 并行轮 `http://` 284/284 全绿、`file://` 唯一一条「键盘独立通关」失败；
   经无并发 3/3 复测（`win=True`、`bestPathMismatches=0`、兵力与敌方三次完全一致、`PRODUCT_OK`）
-  判定为高负载下的测试侧时序抖动，V4 未改输入层；随后改串行复核消除并发干扰。
+  判定为高负载下的测试侧时序抖动，V4 未改输入层；随后改串行复核消除并发干扰，
+  结果 `file://` 285/285、`http://` 284/284 双协议零失败。
 
 ---
 
