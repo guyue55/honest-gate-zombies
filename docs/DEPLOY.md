@@ -97,6 +97,22 @@ gh api -X POST repos/guyue55/honest-gate-zombies/pages \
 - [ ] 断网 / 飞行模式下刷新仍可完整玩一关
 - [ ] 灰阶模式下正负门可区分；系统开启「减少动态效果」后震动 / 闪白 / 粒子关闭
 
+**自动化验收结果（2026-11-14，本机 Chrome 真机）**
+
+| 检查 | 线上结果 |
+|---|---|
+| 上线前子路径预检 `/honest-gate-zombies/index.html` | 200 / `HOME→S1` / `level=1` / 资源请求 `[]` / 报错 `[]` |
+| HTTPS 首页 | **200**，title「诚实数字门 · 打僵尸」，`#btn-start` 与 `__GAME_DEBUG__` 均存在 |
+| 可开局 | `HOME → S1 → S2`（空格跳预览），canvas 逻辑尺寸 `480×854` |
+| 断网后继续玩 | `offline=True` 后仍 `S2`，门组滚动推进、队伍跟随拖拽、画面完整 |
+| Network / Console | `resource entries []`、HTTP≥400 `[]`、外部请求 `[]`、console error `[]`、pageerror `[]`、requestfailed `[]` |
+| 判定 | **PASS** |
+
+> 如实说明：线上真机只跑到 S2 与断网后的继续操作，**没有在线上重复跑完整一关**；
+> 完整通关 / 三端输入 / 20 次重试 / 5 视口 / 灰阶 / reduced-motion / 帧率由
+> `tests/browser_check.py` 双协议全量回归与 V4 逐屏验证覆盖（见 `docs/TEST_REPORT.md` §14.5、§14.8）。
+> 因此上表之外的 checkbox 保留为人工复核项，不冒充已自动化验证。
+
 ## 自定义域名（可选）
 
 在仓库根目录加 `CNAME` 文件（内容为域名），并把 DNS 指向

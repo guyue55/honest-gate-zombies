@@ -42,7 +42,9 @@
 
 **验证**：`npm test` 四层全绿（26 API / 15809 断言 / 硬违规 0 / 部署守卫 PASS）、7 个 script 块语法 7/7；
 真机 L1 胜利 `shots=362 / hits=350 / kills=30 / alive=0 / grade=S`，失败 `kills=0 / alive=30`、
-`CONSOLE []`、`PAGEERR []`；L1–L5 连续全 WIN 全 S；Pages 子路径真机预检 200 / 零外部请求 / 零报错；
+`CONSOLE []`、`PAGEERR []`；L1–L5 连续全 WIN 全 S；
+Pages 子路径预检与线上 `https://guyue55.github.io/honest-gate-zombies/` 真机验收均为
+200 / `HOME→S1→S2` / 断网后仍可继续操作 / 零外部资源请求 / 零报错；CI 首次 push 后 9 秒 success；
 双协议回归与帧率见 `docs/TEST_REPORT.md` §14。
 
 ---

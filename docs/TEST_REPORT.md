@@ -790,9 +790,48 @@ API 数量断言 : PASS (26)
 | reduced-motion | 闪白 / 火花 / 碎屑 / 枪口焰 / 震动 / 顿帧全关，弹丸降级细线（保留射击可读性） |
 | 体积 | 198,171 字节 < 300 KiB |
 
-### 14.10 线上 GitHub Pages 验证
+### 14.10 静态托管与线上 GitHub Pages 验证
 
-> 本节在仓库创建、推送、Pages 开启后回填（HTTPS 可开局、Network 无 404 / 外部请求、Console 零 error）。
+**仓库**：`guyue55/honest-gate-zombies`（公开 / MIT / `main` / Pages `Deploy from a branch` → `/ (root)` / `.nojekyll`）。
+首次 push 后 CI（`.github/workflows/ci.yml`）**9 秒 success**；Pages 状态 `building → built`，
+`https://guyue55.github.io/honest-gate-zombies/` 返回 **200**。
+
+#### 14.10.1 上线前：项目子路径真机预检
+
+把 `index.html` / `.nojekyll` / `assets/manifest.json` 复制到临时站点根目录的
+`honest-gate-zombies/` 子目录，用 `http.server` + 本机 Chrome 打开
+`http://127.0.0.1:8766/honest-gate-zombies/index.html`：
+
+| 检查 | 结果 |
+|---|---|
+| HTTP / title | 200 / 「诚实数字门 · 打僵尸」 |
+| `#btn-start` / `__GAME_DEBUG__` | 均存在，初始 `phase=HOME` |
+| 点击「开始游戏」 | `phase=S1`、`level=1`，S1 门组预览完整（20 组门 / 分 3 段推进） |
+| `performance.getEntriesByType('resource')` | `[]` |
+| console error / pageerror / requestfailed / 外部请求 | 全为 `[]` |
+
+结论：挂在 `/honest-gate-zombies/` 子路径下不会 404，`check-deploy.mjs` 的「无根绝对路径」断言得到真机印证。
+
+#### 14.10.2 线上 HTTPS 真机验收
+
+本机 Chrome（520×900）真实访问 Pages 地址：
+
+| 检查 | 结果 |
+|---|---|
+| `http_status` / `title` | **200** / 「诚实数字门 · 打僵尸」 |
+| `#btn-start` / `__GAME_DEBUG__` / canvas | 均存在；canvas 逻辑尺寸 `480×854` |
+| 状态推进 | `HOME` → 点开始 `S1` → 空格跳预览 `S2`（`level=1`） |
+| **断网后继续玩** | `context.set_offline(True)` 后仍保持 `S2`、debug 可读，拖拽选门后门组继续滚动推进、队伍跟随移动，画面完整 |
+| `performance.getEntriesByType('resource')` | **`[]`** —— 线上运行时零外部资源请求 |
+| console error / pageerror / requestfailed / HTTP≥400 / 外部请求 | 全为 `[]` |
+| 判定 | **PASS** |
+
+截图二次确认：线上 S2 与断网后 S2 两帧，HUD 关卡 / 兵力 / 进度条、门组（含门板黄黑陷阱警示带）、
+我方人海、远景尸潮、跑道场景均完整渲染，无空白、无缺失资源、无网络错误提示。
+
+> 如实标注边界：线上真机验收只跑到 S2 与断网后的继续操作，**没有在线上跑完整一关**；
+> 「完整通关一关 / 三端输入 / 20 次重试 / 灰阶 / reduced-motion / 帧率」由 §14.8 的双协议全量回归与 §14.5 的逐屏验证覆盖。
+> 断网「刷新后仍可完整玩一关」这一条未在线上单独验证；`file://` 双击离线可玩由双协议回归覆盖。
 
 ### 14.11 结论
 

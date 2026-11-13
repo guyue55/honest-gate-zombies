@@ -166,8 +166,22 @@
 
 > 待 `browser_check.py --protocol file` 与 `--protocol http --port 8765` 跑完后回填（通过数 / FPS / 控制台 / 外部请求）。
 
-### 5.4 线上 GitHub Pages 验证
+### 5.4 静态托管与线上 GitHub Pages 验证 ✅
 
-> 待仓库创建、推送、Pages 开启后回填（HTTPS 可开局 / Network 无 404 与外部请求 / Console 零 error）。
+仓库 `guyue55/honest-gate-zombies`（公开 / MIT / `main` / Pages `Deploy from a branch` → `/ (root)` / `.nojekyll`）；
+首次 push 后 CI **9 秒 success**，Pages `building → built`，线上 **200**。
 
-所有「看起来对但没跑过」的项一律不标完成；⏳ 的两节在跑完后回填。
+| 检查 | 子路径预检（本地） | 线上 HTTPS |
+|---|---|---|
+| HTTP / title | 200 / 标题正确 | 200 / 标题正确 |
+| 可开局 | 点击开始 → `S1`、`level=1` | `HOME → S1 → S2`（空格跳预览） |
+| 断网后继续玩 | — | `set_offline(True)` 后仍 `S2`，门组推进、队伍跟随、画面完整 |
+| 运行时资源请求 | `resource entries []` | `resource entries []` |
+| console / pageerror / requestfailed / 404 / 外部请求 | 全 `[]` | 全 `[]` |
+| 截图二次确认 | S1 门组预览完整 | 线上 S2 与断网 S2 两帧完整 |
+
+详细数据与如实标注的验证边界见 `docs/TEST_REPORT.md §14.10`、`docs/DEPLOY.md`。
+
+### 5.5 最终双协议全量回归
+
+见 §5.3；跑完后回填。所有「看起来对但没跑过」的项一律不标完成。
