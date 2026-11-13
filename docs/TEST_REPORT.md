@@ -756,6 +756,7 @@ hitstop 冷却、粒子上限、枪口焰时长、WCAG reduced-motion），完�
 | 失败局仍有一个漂浮蓝色 `0` 气泡 | 以为属于 HUD 正常显示 | 截图确认远景人海已 0，气泡却悬在跑道上，像空标签 | `drawCrowdBadges()` 在 `crowd.ally<=0` 时 return；重拍截图复核通过 |
 | 失败局氛围不够、与胜利局色调太像 | 以为提示文案已足够 | 对比两张截图确认红色警示强度差异不足 | `post.alarm` 失败系数 `0.045 → 0.085` |
 | 全文 `grep -c Math.random` 得 **2** 而旧文档写「仅一处注释」 | 以为确定性被破坏 | 逐行核对：一处在渲染层「禁用 Math.random」注释，一处在 V4 弹道段「不引入 Math.random」注释；`static-audit.js` 的 `stripJsComments()` 会把注释替换为等长空格后再检索，故 `code` 命中 0、硬违规 0 | 属文档口径过期（§13 写于 V3 时点），不改代码；§14.9 与 `VISUAL-UPGRADE.md §9.8` 按现行 2 处注释如实记录 |
+| 最终 `file://` 回归出现 `[FAIL] 键盘 独立通关一关 win=False`，而同轮 `http://` 三端输入 0 失败 | 怀疑 V4 改动影响了键盘输入或 S2 判定 | ① 核对 V4 diff：本轮**未改** `game-input`、S2 门组判定、`bestPath`、`applyGate`、`resolveBattle`；② 单独（无并发）复测键盘通关 **3 次**，全部 `win=True`、`bestPathMismatches=0`、`powerBefore=63942 / enemyPower=45645` 三次完全一致、`phaseTrace=[S1,S2,S3,S4]`、零 console/pageerror，判定 `PRODUCT_OK`；③ 顺带发现真问题：两个回归进程同时 `open('tests/test-results.json','w')`，产出交错损坏的 JSON（片段 `"ok"S1true`） | 判定为**双协议并行时高负载下的测试侧时序抖动**，不改产品代码；修复 `browser_check.py`（按协议分文件 + 临时文件原子替换 + `--results` 参数），并**串行**重跑双协议全量回归作为交付证据（见 §14.8） |
 
 ### 14.7 Node 四层与脚本语法
 
@@ -775,7 +776,54 @@ API 数量断言 : PASS (26)
 
 ### 14.8 最终双协议全量回归与帧率
 
-> 本节在最终代码的 `browser_check.py --protocol file` 与 `--protocol http --port 8765` 跑完后回填（含通过数、FPS、`consoleErrors` / `pageErrors`、外部请求数）。
+命令（默认参数：`--retry-count 20`、`--offline-levels 12`）：
+
+```bash
+python3.9 -u tests/browser_check.py --protocol file
+python3.9 -u tests/browser_check.py --protocol http --port 8765
+```
+
+#### 14.8.1 第一轮：双协议并行（暴露测试基建缺陷）
+
+| 协议 | 通过 / 合计 | 失败 | 退出码 |
+|---|---|---|---|
+| `http://` | **284 / 284** | 0 | 0 |
+| `file://` | 284 / 285 | 1（键盘 独立通关一关 `win=False`） | 1 |
+
+两轮各约 31 分 52 秒，覆盖调试接口 / 零外部请求 / 1–5 关含 Boss / 20 次失败免费重试 /
+资源降级注入 / 帮助面板 / 5 视口 + 灰阶 + reduced-motion / 三端输入 / 断网 12 关 / 帧率 / 控制台。
+`http://` 全绿；`file://` 唯一失败项的二次分析见 §14.6 与 §14.8.2。
+
+**同时发现一个真问题**：两个进程都写死 `tests/test-results.json`，
+收尾时同时 `open(...,'w')` 造成内容交错，产出无法 `JSON.parse` 的文件（片段 `"ok"S1true`）。
+这不是产品问题，但会让「结构化结果」失去可信度，必须修。
+
+#### 14.8.2 键盘 FAIL 的二次分析（结论：非产品回归）
+
+- 产品侧：V4 只改 `game-session` / `game-render` / `game-audio` 的战斗表现层；
+  `game-input`、S2 判定窗口、`bestPath`、`applyGate`、`resolveBattle` 全部未动。
+- 实测：无并发条件下键盘独立通关 **3/3 全胜**，`bestPathMismatches=0`，
+  三次 `powerBefore=63942` / `enemyPower=45645` 完全一致（确定性成立的旁证），
+  `phaseTrace=[S1,S2,S3,S4]`，console error / pageerror 均为 0 → `PRODUCT_OK`。
+- 与 V3 已记录的同类现象一致：并发跑双协议时 CDP 往返延迟挤占 1400ms 门组判定窗口，
+  `align_keyboard` 偶发丢事件导致误选负门。属**测试侧时序抖动**。
+- 处置：不改产品代码；修测试基建，并改用**串行**重跑消除并发干扰。
+
+#### 14.8.3 `browser_check.py` 基建修复
+
+| 改动 | 作用 |
+|---|---|
+| 默认输出改为 `tests/test-results-<protocol>.json` | file / http 各写各的，不再互相覆盖 |
+| 先写 `<path>.tmp` 再 `os.replace()` 原子替换 | 任何时刻读到的都是完整 JSON，不会留下半份 |
+| 新增 `--results <path>` | 允许显式指定归档路径 |
+| 顶部 docstring / `tests/README.md` 勘误 | 说明结果文件是本地运行产物、由 `.gitignore` 排除，不随仓库分发 |
+
+`py_compile` 语法校验通过；`npm test` 四层不受影响（CI 只跑 Node 四层，不跑 Playwright）。
+
+#### 14.8.4 串行复核轮（不并发，最终交付证据）
+
+> 两个协议按 `file → http` **串行**重跑（修复后的脚本，各自输出独立 JSON）。
+> 通过数 / FPS / `consoleErrors` / 外部请求数在跑完后回填。
 
 ### 14.9 硬约束复核
 

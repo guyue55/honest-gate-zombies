@@ -47,6 +47,14 @@ Pages 子路径预检与线上 `https://guyue55.github.io/honest-gate-zombies/` 
 200 / `HOME→S1→S2` / 断网后仍可继续操作 / 零外部资源请求 / 零报错；CI 首次 push 后 9 秒 success；
 双协议回归与帧率见 `docs/TEST_REPORT.md` §14。
 
+**测试基建修复（回归暴露，非产品问题）**
+
+- 双协议并行跑时两个进程同时写 `tests/test-results.json`，JSON 交错损坏；
+  `browser_check.py` 改为按协议分文件输出（`<protocol>.json`）+ `.tmp` 原子替换 + `--results` 参数。
+- 并行轮 `http://` 284/284 全绿、`file://` 唯一一条「键盘独立通关」失败；
+  经无并发 3/3 复测（`win=True`、`bestPathMismatches=0`、兵力与敌方三次完全一致、`PRODUCT_OK`）
+  判定为高负载下的测试侧时序抖动，V4 未改输入层；随后改串行复核消除并发干扰。
+
 ---
 
 ## V3 · 节奏 / 决策 / 手感（2026-11-13）

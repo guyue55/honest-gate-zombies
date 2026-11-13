@@ -11,7 +11,9 @@ tests/browser_check.py —— Playwright 真实浏览器验证（阶段 A 只写
   p.chromium.launch(headless=True,
       executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
 
-输出：tests/test-results.json（结构化结果，失败项带断言名与实际值）
+输出：tests/test-results-<protocol>.json（结构化结果，失败项带断言名与实际值）。
+      按协议分文件 + 临时文件原子替换，支持 file/http 双协议并行回归而不互相覆盖；
+      可用 --results <path> 显式指定输出路径。
 截图：tests/screenshots/（V-1~V-8 + 灰阶 + prefers-reduced-motion + 5 视口）
 
 容错说明：按钮一律「文字 / role 定位 + 多重回退」，不硬编码未定的 CSS 类名；
@@ -31,7 +33,9 @@ from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HTML = os.path.join(ROOT, 'index.html')
 SHOTS = os.path.join(ROOT, 'tests', 'screenshots')
-RESULTS = os.path.join(ROOT, 'tests', 'test-results.json')
+# 结果 JSON 默认按协议分文件（见 main 的 --results 处理）：双协议并行回归时，
+# 两个进程若同时 open(...,'w') 同一个文件会交错写入、产出无法解析的 JSON。
+RESULTS_DIR = os.path.join(ROOT, 'tests')
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 PY = sys.executable
 
@@ -917,7 +921,11 @@ def main():
                     help='失败重试连续次数（A-8 要求 20；阶段 B 可临时调小以缩短时长）')
     ap.add_argument('--offline-levels', type=int, default=12,
                     help='断网通关关数（>=10 含 2 个 Boss；12 关可覆盖 6 组门帧率场景）')
+    ap.add_argument('--results', default=None,
+                    help='结果 JSON 路径；默认 test-results-<protocol>.json，避免双协议并发跑时互相覆盖')
     args = ap.parse_args()
+    results_path = args.results or os.path.join(
+        RESULTS_DIR, 'test-results-%s.json' % args.protocol)
 
     server = None
     try:
@@ -967,11 +975,15 @@ def main():
         'fpsSamples': FPS_SAMPLES,
         'screenshotsDir': SHOTS
     }
-    with open(RESULTS, 'w', encoding='utf-8') as f:
+    # 先写临时文件再原子替换：即使两个协议同时收尾，也只会各自替换自己的目标文件，
+    # 不会留下半份 JSON。
+    tmp_path = results_path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, results_path)
     print('\n========== browser_check.py 结果 ==========')
     print('通过: %d  失败: %d  合计: %d' % (passed, failed, len(RESULTS_LIST)))
-    print('JSON: ' + RESULTS)
+    print('JSON: ' + results_path)
     print('==========================================')
     sys.exit(1 if failed else 0)
 

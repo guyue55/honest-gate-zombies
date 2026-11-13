@@ -7,6 +7,11 @@
 > `play_level` 默认超时 **90000ms** 且选门策略默认 **`best`**（读 `__GAME_DEBUG__.bestPath`），
 > 单关 20–30 组门 / 41–52 秒（旧文「达到 6 组门」「8 分钟」均为旧值）。
 > 现行全套命令与结果见 `docs/TEST_REPORT.md` §13、§14；`npm test` 为唯一权威自检入口。
+> **结果文件（V4 修正）**：`test-results*.json` / `*.log` 均为**本地运行产物**，由 `.gitignore` 排除、不随仓库分发；
+> 下文 §2 / §5 中提到的 `tests/test-results.json` 是 V1/V2 时的单文件输出。
+> 现行 `browser_check.py` 按协议分别写 `tests/test-results-file.json` 与 `tests/test-results-http.json`，
+> 并先写 `.tmp` 再原子替换（可用 `--results <path>` 覆盖）——修复了 **file/http 并行回归同时写同一路径导致 JSON 交错损坏** 的问题。
+>
 > V4 另新增只读观测字段 `__GAME_DEBUG__.combat = {shots,hits,kills,bullets,slots,alive,bossHit}`，
 > 用于证明弹丸真的从枪口飞向僵尸并在接触帧命中；`browser_check.py` 覆盖全流程回归，
 > 逐屏截图另由 V4 专项 Playwright 采样（同一套本机 Chrome，按 `win / lose / reduced-motion` 三种模式）产出，

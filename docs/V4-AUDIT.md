@@ -164,7 +164,18 @@
 
 ### 5.3 最终双协议全量回归
 
-> 待 `browser_check.py --protocol file` 与 `--protocol http --port 8765` 跑完后回填（通过数 / FPS / 控制台 / 外部请求）。
+**并行轮**：`http://` **284/284 / 失败 0 / EXIT=0**；`file://` 284/285 / 失败 1（键盘 独立通关）/ EXIT=1。
+两轮各约 31 分 52 秒。
+
+**二次分析（用户硬要求）**：`file://` 的键盘 FAIL 经三项核对判定为**测试侧并发时序抖动**——
+V4 未改 `game-input` / S2 判定 / `bestPath`；无并发复测键盘通关 **3/3 全胜**、
+`bestPathMismatches=0`、三次 `powerBefore=63942 / enemyPower=45645` 完全一致、零报错 → `PRODUCT_OK`。
+详见 `docs/TEST_REPORT.md §14.6 / §14.8.2`。
+
+**顺带修掉的测试基建真问题**：两个进程同时写 `tests/test-results.json`，产出交错损坏的 JSON。
+`browser_check.py` 改为按协议分文件输出 + `.tmp` 原子替换 + `--results` 参数（`py_compile` 通过）。
+
+**串行复核轮**：按 `file → http` 不并发重跑，通过数 / FPS / 控制台 / 外部请求数在跑完后回填 §5.5。
 
 ### 5.4 静态托管与线上 GitHub Pages 验证 ✅
 
@@ -182,6 +193,6 @@
 
 详细数据与如实标注的验证边界见 `docs/TEST_REPORT.md §14.10`、`docs/DEPLOY.md`。
 
-### 5.5 最终双协议全量回归
+### 5.5 串行复核轮结果
 
-见 §5.3；跑完后回填。所有「看起来对但没跑过」的项一律不标完成。
+> 待 `file → http` 串行重跑完成后回填。所有「看起来对但没跑过」的项一律不标完成。

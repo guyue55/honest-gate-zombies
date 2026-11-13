@@ -18,6 +18,7 @@ venv/
 
 # 测试运行产物：每次跑 browser_check.py 都会被覆写；历史轮次的 log/结果同理，不随仓库分发
 tests/test-results*.json
+tests/*.json.tmp
 tests/*.log
 tests/screenshots_http_v3/
 
